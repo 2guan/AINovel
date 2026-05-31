@@ -299,10 +299,26 @@ export class StoryMacroPlanService {
     });
   }
 
-  async regenerateField(novelId: string, field: StoryMacroField, options: LLMOptions = {}): Promise<StoryMacroPlan> {
+  async regenerateField(
+    novelId: string,
+    field: StoryMacroField,
+    options: LLMOptions & {
+      storyInput?: string | null;
+      expansion?: Partial<Omit<StoryExpansion, "conflict_layers">> & {
+        conflict_layers?: Partial<StoryExpansion["conflict_layers"]>;
+      };
+      decomposition?: Partial<StoryDecomposition>;
+      constraints?: string[];
+      lockedFields?: StoryMacroLocks;
+    } = {},
+  ): Promise<StoryMacroPlan> {
     const novel = await this.getNovelContext(novelId);
-    const plan = await this.getPlan(novelId);
-    if (!plan?.storyInput || !plan.decomposition) {
+    
+    // First, save any uncommitted edits passed in options to the database
+    const { provider, model, temperature, ...updateFields } = options;
+    const plan = await this.updatePlan(novelId, updateFields);
+
+    if (!plan.storyInput || !plan.decomposition) {
       throw new Error("请先完成故事引擎拆解。");
     }
     if (plan.lockedFields[field]) {
@@ -318,7 +334,7 @@ export class StoryMacroPlanService {
       plan.storyInput,
       editablePlan,
       plan.lockedFields,
-      options,
+      { provider, model, temperature },
       formatProjectContext(novel, worldSlice ? formatStoryWorldSlicePromptBlock(worldSlice) : ""),
     );
     const nextPlan = setEditablePlanFieldValue(editablePlan, field, nextFieldValue);

@@ -93,6 +93,8 @@ const storyMacroStateUpdateSchema = z.object({
   protagonistState: z.string().trim().optional(),
 });
 
+const storyMacroRegenerateSchema = llmGenerateSchema.merge(storyMacroUpdateSchema);
+
 interface RegisterNovelStoryMacroRoutesInput {
   router: Router;
   idParamsSchema: z.ZodType<{ id: string }>;
@@ -173,11 +175,11 @@ export function registerNovelStoryMacroRoutes(input: RegisterNovelStoryMacroRout
 
   router.post(
     "/:id/story-macro/fields/:field/regenerate",
-    validate({ params: storyMacroFieldParamsSchema, body: llmGenerateSchema }),
+    validate({ params: storyMacroFieldParamsSchema, body: storyMacroRegenerateSchema }),
     async (req, res, next) => {
       try {
         const { id, field } = req.params as z.infer<typeof storyMacroFieldParamsSchema>;
-        const data = await storyMacroService.regenerateField(id, field, req.body as z.infer<typeof llmGenerateSchema>);
+        const data = await storyMacroService.regenerateField(id, field, req.body as z.infer<typeof storyMacroRegenerateSchema>);
         res.status(200).json({
           success: true,
           data,

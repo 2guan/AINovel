@@ -206,6 +206,11 @@ export function useNovelStoryMacro(input: UseNovelStoryMacroInput): {
         provider: llm.provider,
         model: llm.model,
         temperature: llm.temperature,
+        storyInput: storyInput.trim() || null,
+        expansion: expansion ?? EMPTY_EXPANSION_VALUE,
+        decomposition,
+        constraints,
+        lockedFields,
       });
     },
     onSuccess: async (response) => {

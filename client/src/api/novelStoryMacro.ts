@@ -57,7 +57,13 @@ export async function updateNovelStoryMacroPlan(
 export async function regenerateNovelStoryMacroField(
   id: string,
   field: StoryMacroField,
-  payload?: LLMPayload,
+  payload?: LLMPayload & {
+    storyInput?: string | null;
+    expansion?: Partial<StoryExpansion>;
+    decomposition?: Partial<StoryDecomposition>;
+    constraints?: string[];
+    lockedFields?: StoryMacroLocks;
+  },
 ) {
   const { data } = await apiClient.post<ApiResponse<StoryMacroPlan>>(
     `/novels/${id}/story-macro/fields/${field}/regenerate`,
