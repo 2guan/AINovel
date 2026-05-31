@@ -39,7 +39,7 @@ export default function UserManagementPage() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get("/api/admin/users");
+      const response = await apiClient.get("/admin/users");
       if (response.data?.success && response.data?.data) {
         setUsers(response.data.data);
       }
@@ -56,7 +56,7 @@ export default function UserManagementPage() {
 
   const handleRoleChange = async (userId: string, targetRole: "admin" | "user" | "pending") => {
     try {
-      const response = await apiClient.patch(`/api/admin/users/${userId}/role`, {
+      const response = await apiClient.patch(`/admin/users/${userId}/role`, {
         role: targetRole,
       });
 
@@ -81,7 +81,7 @@ export default function UserManagementPage() {
 
     setCreating(true);
     try {
-      const response = await apiClient.post("/api/admin/users/create", {
+      const response = await apiClient.post("/admin/users/create", {
         username: newUsername.trim(),
         password: newPassword,
         role: newRole,
@@ -110,7 +110,7 @@ export default function UserManagementPage() {
 
     setResetting(true);
     try {
-      const response = await apiClient.post(`/api/admin/users/${resettingUser.id}/reset-password`, {
+      const response = await apiClient.post(`/admin/users/${resettingUser.id}/reset-password`, {
         newPassword: resetPassword,
       });
 
