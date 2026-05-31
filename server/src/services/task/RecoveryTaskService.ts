@@ -108,7 +108,17 @@ export class RecoveryTaskService {
       prisma.novelWorkflowTask.findMany({
         where: {
           lane: "auto_director",
-          novelId: { not: null },
+          OR: [
+            { novelId: { not: null } },
+            {
+              novelId: null,
+              OR: [
+                { currentItemKey: "auto_director" },
+                { currentItemKey: "novel_create" },
+                { currentItemKey: { startsWith: "candidate_" } },
+              ],
+            },
+          ],
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
         },

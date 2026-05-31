@@ -425,7 +425,17 @@ export class NovelWorkflowTaskAdapter {
           }
           : {}),
         lane: "auto_director",
-        novelId: { not: null },
+        OR: [
+          { novelId: { not: null } },
+          {
+            novelId: null,
+            OR: [
+              { currentItemKey: "auto_director" },
+              { currentItemKey: "novel_create" },
+              { currentItemKey: { startsWith: "candidate_" } },
+            ],
+          },
+        ],
         ...(input.status ? { status: input.status } : {}),
         ...(input.keyword
           ? {
@@ -461,7 +471,17 @@ export class NovelWorkflowTaskAdapter {
             }
             : {}),
           lane: "auto_director",
-          novelId: { not: null },
+          OR: [
+            { novelId: { not: null } },
+            {
+              novelId: null,
+              OR: [
+                { currentItemKey: "auto_director" },
+                { currentItemKey: "novel_create" },
+                { currentItemKey: { startsWith: "candidate_" } },
+              ],
+            },
+          ],
           ...(input.status ? { status: input.status } : {}),
           ...(input.keyword
             ? {
