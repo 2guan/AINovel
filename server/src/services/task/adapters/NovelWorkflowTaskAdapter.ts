@@ -425,6 +425,7 @@ export class NovelWorkflowTaskAdapter {
           }
           : {}),
         lane: "auto_director",
+        novelId: { not: null },
         ...(input.status ? { status: input.status } : {}),
         ...(input.keyword
           ? {
@@ -460,6 +461,7 @@ export class NovelWorkflowTaskAdapter {
             }
             : {}),
           lane: "auto_director",
+          novelId: { not: null },
           ...(input.status ? { status: input.status } : {}),
           ...(input.keyword
             ? {

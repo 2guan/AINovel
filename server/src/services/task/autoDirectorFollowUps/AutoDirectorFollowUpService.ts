@@ -260,6 +260,7 @@ export class AutoDirectorFollowUpService {
     const rawRows = await prisma.novelWorkflowTask.findMany({
       where: {
         lane: "auto_director",
+        novelId: { not: null },
         ...(archivedIds.length > 0
           ? {
             id: {

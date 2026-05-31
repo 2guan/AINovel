@@ -246,6 +246,7 @@ export class NovelWorkflowStoreService {
     const rows = await prisma.novelWorkflowTask.findMany({
       where: {
         lane: "auto_director",
+        novelId: { not: null },
         status: {
           in: ["queued", "running"],
         },

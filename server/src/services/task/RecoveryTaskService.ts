@@ -108,6 +108,7 @@ export class RecoveryTaskService {
       prisma.novelWorkflowTask.findMany({
         where: {
           lane: "auto_director",
+          novelId: { not: null },
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
         },
