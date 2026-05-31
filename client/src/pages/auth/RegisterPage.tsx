@@ -42,7 +42,7 @@ export default function RegisterPage() {
     setErrorMsg(null);
 
     try {
-      const response = await apiClient.post("/api/auth/register", {
+      const response = await apiClient.post("/auth/register", {
         username: username.trim(),
         password,
       });

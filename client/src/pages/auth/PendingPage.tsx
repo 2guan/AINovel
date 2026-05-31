@@ -16,7 +16,7 @@ export default function PendingPage() {
   const handleRefresh = async () => {
     setChecking(true);
     try {
-      const response = await apiClient.get("/api/auth/me");
+      const response = await apiClient.get("/auth/me");
       if (response.data?.success && response.data?.data) {
         const freshUser = response.data.data;
         

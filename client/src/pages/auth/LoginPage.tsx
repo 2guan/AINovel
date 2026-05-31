@@ -32,7 +32,7 @@ export default function LoginPage() {
     setErrorMsg(null);
 
     try {
-      const response = await apiClient.post("/api/auth/login", {
+      const response = await apiClient.post("/auth/login", {
         username: username.trim(),
         password,
       });
