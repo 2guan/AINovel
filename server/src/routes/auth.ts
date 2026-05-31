@@ -11,10 +11,6 @@ const router = Router();
 const registerSchema = z.object({
   username: z.string().trim().min(3).max(30),
   password: z.string().min(6).max(100),
-  confirmPassword: z.string().min(6).max(100),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "两次输入的密码不一致。",
-  path: ["confirmPassword"],
 });
 
 const loginSchema = z.object({
