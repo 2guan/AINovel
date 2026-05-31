@@ -12,7 +12,7 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      - qdrant_data:/qdrant/storage
+      - ./qdrant_data:/qdrant/storage
 
   # -------------------------------------------------------------
   # 2. 后端 API 服务 (使用原生极简 SQLite 模式)
@@ -65,7 +65,7 @@ services:
       - IMAGE_STORAGE_DRIVER=local
       - IMAGE_STORAGE_ROOT=storage/generated-images
     volumes:
-      - api_storage:/app/storage
+      - ./storage:/app/storage
     # 启动命令：在启动时动态为 SQLite 生成一次 Prisma Client，然后运行 SQLite 自动迁移并启动服务
     command: >
       sh -c "/app/node_modules/.bin/prisma generate --config /app/server/prisma.config.ts && /app/node_modules/.bin/prisma migrate deploy && node ./server/dist/app.js"
@@ -85,7 +85,3 @@ services:
       - "4002:8080"
     depends_on:
       - api
-
-volumes:
-  qdrant_data:
-  api_storage:
