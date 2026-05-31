@@ -3,6 +3,7 @@ import type { RouteObject } from "react-router-dom";
 import { Navigate, useRoutes } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { featureFlags } from "@/config/featureFlags";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 const Home = lazy(() => import("@/pages/Home"));
 const HelpPage = lazy(() => import("@/pages/help/HelpPage"));
@@ -24,16 +25,37 @@ const PromptWorkbenchPage = lazy(() => import("@/pages/promptWorkbench/PromptWor
 const AntiAiRulesPage = lazy(() => import("@/pages/antiAiRules/AntiAiRulesPage"));
 const ModelRoutesPage = lazy(() => import("@/pages/settings/ModelRoutesPage"));
 const SettingsPage = lazy(() => import("@/pages/settings/SettingsPage"));
+const UserManagementPage = lazy(() => import("@/pages/settings/UserManagementPage"));
 const WorldList = lazy(() => import("@/pages/worlds/WorldList"));
 const WorldGenerator = lazy(() => import("@/pages/worlds/WorldGenerator"));
 const WorldWorkspace = lazy(() => import("@/pages/worlds/WorldWorkspace"));
 const WritingFormulaPage = lazy(() => import("@/pages/writingFormula/WritingFormulaPage"));
 const CharacterLibrary = lazy(() => import("@/pages/characters/CharacterLibrary"));
 
+const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
+const PendingPage = lazy(() => import("@/pages/auth/PendingPage"));
+
 const routes: RouteObject[] = [
   {
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    path: "/register",
+    element: <RegisterPage />,
+  },
+  {
+    path: "/pending",
+    element: <PendingPage />,
+  },
+  {
     path: "/",
-    element: <AppLayout />,
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, element: <Home /> },
       { path: "help", element: <HelpPage /> },
@@ -57,6 +79,14 @@ const routes: RouteObject[] = [
       { path: "prompt-workbench", element: <PromptWorkbenchPage /> },
       { path: "anti-ai-rules", element: <AntiAiRulesPage /> },
       { path: "settings/model-routes", element: <ModelRoutesPage /> },
+      { 
+        path: "settings/users", 
+        element: (
+          <ProtectedRoute requireAdmin={true}>
+            <UserManagementPage />
+          </ProtectedRoute>
+        ) 
+      },
       { path: "settings", element: <SettingsPage /> },
       { path: "worlds", element: <WorldList /> },
       {

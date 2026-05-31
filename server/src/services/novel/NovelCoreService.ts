@@ -35,16 +35,16 @@ export class NovelCoreService {
   private readonly pipelineService = new NovelCorePipelineService();
   private readonly snapshotService = new NovelCoreSnapshotService();
 
-  async listNovels(input: PaginationInput) {
-    return this.crudService.listNovels(input);
+  async listNovels(input: PaginationInput, userId?: string, userRole?: string) {
+    return this.crudService.listNovels(input, userId, userRole);
   }
 
-  async createNovel(input: CreateNovelInput) {
+  async createNovel(input: CreateNovelInput & { userId?: string }) {
     return this.crudService.createNovel(input);
   }
 
-  async getNovelById(id: string) {
-    return this.crudService.getNovelById(id);
+  async getNovelById(id: string, userId?: string, userRole?: string) {
+    return this.crudService.getNovelById(id, userId, userRole);
   }
 
   async listStorylineVersions(novelId: string) {
@@ -71,12 +71,12 @@ export class NovelCoreService {
     return this.storylineService.analyzeStorylineImpact(novelId, input);
   }
 
-  async updateNovel(id: string, input: UpdateNovelInput) {
-    return this.crudService.updateNovel(id, input);
+  async updateNovel(id: string, input: UpdateNovelInput, userId?: string, userRole?: string) {
+    return this.crudService.updateNovel(id, input, userId, userRole);
   }
 
-  async deleteNovel(id: string) {
-    return this.crudService.deleteNovel(id);
+  async deleteNovel(id: string, userId?: string, userRole?: string) {
+    return this.crudService.deleteNovel(id, userId, userRole);
   }
 
   async listChapters(novelId: string) {

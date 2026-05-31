@@ -68,8 +68,14 @@ export class KnowledgeService {
   async listDocuments(filters: {
     keyword?: string;
     status?: KnowledgeDocumentStatus;
-  } = {}) {
+  } = {}, userId?: string, userRole?: string) {
     const keyword = filters.keyword?.trim();
+    const tenantWhere = userRole === "admin" ? {} : {
+      OR: [
+        { userId: userId || "" },
+        { userId: null }
+      ]
+    };
     const rows = await prisma.knowledgeDocument.findMany({
       where: {
         ...(filters.status ? { status: filters.status } : { status: { not: "archived" } }),
@@ -81,6 +87,7 @@ export class KnowledgeService {
             ],
           }
           : {}),
+        ...tenantWhere,
       },
       include: {
         _count: {
@@ -176,6 +183,7 @@ export class KnowledgeService {
     title?: string;
     fileName: string;
     content: string;
+    userId?: string;
   }) {
     const normalizedContent = normalizeKnowledgeContent(input.content);
     const title = normalizeKnowledgeDocumentTitle(input.title, input.fileName);
@@ -186,6 +194,7 @@ export class KnowledgeService {
         where: {
           title,
           status: { not: "archived" },
+          userId: input.userId || null,
         },
         orderBy: { updatedAt: "desc" },
       });
@@ -223,6 +232,7 @@ export class KnowledgeService {
           fileName: input.fileName.trim(),
           status: "enabled",
           latestIndexStatus: "queued",
+          userId: input.userId || null,
         },
       });
       const version = await tx.knowledgeDocumentVersion.create({

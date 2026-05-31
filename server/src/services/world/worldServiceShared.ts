@@ -186,6 +186,7 @@ export interface CreateWorldInput {
   knowledgeDocumentIds?: string[];
   structure?: unknown;
   bindingSupport?: unknown;
+  userId?: string;
 }
 
 export interface WorldGenerateInput {
@@ -250,6 +251,7 @@ export interface ImportWorldInput {
   name?: string;
   provider?: LLMProvider;
   model?: string;
+  userId?: string;
 }
 
 export interface LibraryUseInput {

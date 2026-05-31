@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   BookOpenText,
   Braces,
@@ -30,6 +30,7 @@ import { getTaskOverview } from "@/api/tasks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/authStore";
 
 interface NavItem {
   to: string;
@@ -84,7 +85,21 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+  const isAdmin = useAuthStore((state) => state.isAdmin);
   const [badgeQueriesEnabled, setBadgeQueriesEnabled] = useState(false);
+
+  const finalNavGroups = useMemo(() => {
+    return navGroups.map((group) => {
+      if (group.title === "系统") {
+        const items = [...group.items];
+        if (isAdmin) {
+          items.push({ to: "/settings/users", label: "成员管理", icon: UsersRound });
+        }
+        return { ...group, items };
+      }
+      return group;
+    });
+  }, [isAdmin]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setBadgeQueriesEnabled(true), 500);
@@ -205,7 +220,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </div>
 
       <nav className="space-y-4">
-        {navGroups.map((group) => (
+        {finalNavGroups.map((group) => (
           <div key={group.title} className="space-y-1">
             {!collapsed ? (
               <div className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">

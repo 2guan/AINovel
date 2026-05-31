@@ -1,4 +1,6 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
 import LLMSelector from "@/components/common/LLMSelector";
 import DesktopBrandMark from "@/components/layout/DesktopBrandMark";
 import { Button } from "@/components/ui/button";
@@ -15,6 +17,9 @@ interface NavbarProps {
 export default function Navbar(props: NavbarProps) {
   const { workspaceNavMode, onWorkspaceNavModeChange } = props;
   const location = useLocation();
+  const navigate = useNavigate();
+  const logout = useAuthStore((state) => state.logout);
+  const user = useAuthStore((state) => state.user);
   const isHome = location.pathname === "/";
   const showWorkspaceToggle = Boolean(workspaceNavMode && onWorkspaceNavModeChange);
   const useMobileAutoDirectorShell = shouldUseAutoDirectorMobileFullWidthContent(location.pathname);
@@ -43,6 +48,26 @@ export default function Navbar(props: NavbarProps) {
         <div className={useMobileAutoDirectorShell ? AUTO_DIRECTOR_MOBILE_CLASSES.navbarModelSelector : undefined}>
           <LLMSelector compact showBadge={false} showHelperText={false} />
         </div>
+        {user ? (
+          <div className="flex items-center gap-2 border-l pl-3 border-slate-800">
+            <span className="text-xs text-muted-foreground hidden md:inline">
+              你好, <span className="font-semibold text-foreground">{user.username}</span>
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground hover:text-destructive h-8 px-2 hover:bg-transparent"
+              onClick={() => {
+                logout();
+                navigate("/login");
+              }}
+              title="退出登录"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : null}
       </div>
     </header>
   );

@@ -76,8 +76,15 @@ import { ragServices } from "../rag";
 import type { RagOwnerType } from "../rag/types";
 
 export class WorldService {
-  async listWorlds() {
+  async listWorlds(userId?: string, userRole?: string) {
+    const whereClause = userRole === "admin" ? {} : {
+      OR: [
+        { userId: userId || "" },
+        { userId: null },
+      ],
+    };
     return prisma.world.findMany({
+      where: whereClause,
       orderBy: { updatedAt: "desc" },
     });
   }
@@ -175,6 +182,7 @@ export class WorldService {
         structureJson: structuredFields.structureJson as string,
         bindingSupportJson: structuredFields.bindingSupportJson as string,
         structureSchemaVersion: WORLD_STRUCTURE_SCHEMA_VERSION,
+        userId: input.userId ?? null,
       },
     });
     if (knowledgeDocumentIds.length > 0) {

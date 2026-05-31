@@ -34,9 +34,11 @@ export class NovelCoreCrudService {
     }
   }
 
-  async listNovels({ page, limit }: PaginationInput) {
+  async listNovels({ page, limit }: PaginationInput, userId?: string, userRole?: string) {
+    const whereClause = userRole === "admin" ? {} : { userId: userId || "" };
     const [items, total] = await Promise.all([
       prisma.novel.findMany({
+        where: whereClause,
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { updatedAt: "desc" },
@@ -79,7 +81,7 @@ export class NovelCoreCrudService {
           _count: { select: { chapters: true, characters: true, plotBeats: true } },
         },
       }),
-      prisma.novel.count(),
+      prisma.novel.count({ where: whereClause }),
     ]);
 
     const latestAutoDirectorTaskByNovelId = await this.listLatestVisibleAutoDirectorTasksByNovelIds(
@@ -205,7 +207,7 @@ export class NovelCoreCrudService {
     return taskByNovelId;
   }
 
-  async createNovel(input: CreateNovelInput) {
+  async createNovel(input: CreateNovelInput & { userId?: string }) {
     const writingMode = input.writingMode ?? "original";
     const sourceNovelId = input.sourceNovelId ?? null;
     const sourceKnowledgeDocumentId = input.sourceKnowledgeDocumentId ?? null;
@@ -229,6 +231,7 @@ export class NovelCoreCrudService {
       data: {
         title: input.title,
         description: input.description,
+        userId: input.userId || null,
         targetAudience: normalizeOptionalTextForCreate(input.targetAudience),
         bookSellingPoint: normalizeOptionalTextForCreate(input.bookSellingPoint),
         competingFeel: normalizeOptionalTextForCreate(input.competingFeel),
@@ -271,9 +274,10 @@ export class NovelCoreCrudService {
     return normalizeNovelOutput(created);
   }
 
-  async getNovelById(id: string) {
-    const row = await prisma.novel.findUnique({
-      where: { id },
+  async getNovelById(id: string, userId?: string, userRole?: string) {
+    const whereClause = userRole === "admin" ? { id } : { id, userId: userId || "" };
+    const row = await prisma.novel.findFirst({
+      where: whereClause,
       include: {
         genre: true,
         primaryStoryMode: true,
@@ -292,9 +296,10 @@ export class NovelCoreCrudService {
     return normalizeNovelOutput(row);
   }
 
-  async updateNovel(id: string, input: UpdateNovelInput) {
-    const existing = await prisma.novel.findUnique({
-      where: { id },
+  async updateNovel(id: string, input: UpdateNovelInput, userId?: string, userRole?: string) {
+    const whereClause = userRole === "admin" ? { id } : { id, userId: userId || "" };
+    const existing = await prisma.novel.findFirst({
+      where: whereClause,
       select: {
         id: true,
         worldId: true,
@@ -400,7 +405,12 @@ export class NovelCoreCrudService {
     return normalizeNovelOutput(updated);
   }
 
-  async deleteNovel(id: string) {
+  async deleteNovel(id: string, userId?: string, userRole?: string) {
+    const whereClause = userRole === "admin" ? { id } : { id, userId: userId || "" };
+    const existing = await prisma.novel.findFirst({ where: whereClause, select: { id: true } });
+    if (!existing) {
+      throw new Error("小说不存在或无权操作");
+    }
     queueRagDelete("novel", id);
     queueRagDelete("bible", id);
     await prisma.novel.delete({ where: { id } });

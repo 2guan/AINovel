@@ -152,7 +152,11 @@ export function registerNovelBaseRoutes(input: RegisterNovelBaseRoutesInput): vo
   router.get("/", validate({ query: paginationSchema }), async (req, res, next) => {
     try {
       const query = paginationSchema.parse(req.query);
-      const data = await novelService.listNovels({ page: query.page, limit: query.limit });
+      const data = await novelService.listNovels(
+        { page: query.page, limit: query.limit },
+        req.user?.id,
+        req.user?.role
+      );
       const response: ApiResponse<typeof data> = {
         success: true,
         data,
@@ -166,7 +170,10 @@ export function registerNovelBaseRoutes(input: RegisterNovelBaseRoutesInput): vo
 
   router.post("/", validate({ body: createNovelSchema }), async (req, res, next) => {
     try {
-      const data = await novelService.createNovel(req.body as z.infer<typeof createNovelSchema>);
+      const data = await novelService.createNovel({
+        ...(req.body as any),
+        userId: req.user?.id,
+      });
       const response: ApiResponse<typeof data> = {
         success: true,
         data,
@@ -196,7 +203,7 @@ export function registerNovelBaseRoutes(input: RegisterNovelBaseRoutesInput): vo
   router.get("/:id", validate({ params: idParamsSchema }), async (req, res, next) => {
     try {
       const { id } = req.params as z.infer<typeof idParamsSchema>;
-      const data = await novelService.getNovelById(id);
+      const data = await novelService.getNovelById(id, req.user?.id, req.user?.role);
       if (!data) {
         res.status(404).json({
           success: false,
@@ -253,7 +260,7 @@ export function registerNovelBaseRoutes(input: RegisterNovelBaseRoutesInput): vo
     async (req, res, next) => {
       try {
         const { id } = req.params as z.infer<typeof idParamsSchema>;
-        const data = await novelService.updateNovel(id, req.body as z.infer<typeof updateNovelSchema>);
+        const data = await novelService.updateNovel(id, req.body as z.infer<typeof updateNovelSchema>, req.user?.id, req.user?.role);
         res.status(200).json({
           success: true,
           data,
@@ -268,7 +275,7 @@ export function registerNovelBaseRoutes(input: RegisterNovelBaseRoutesInput): vo
   router.delete("/:id", validate({ params: idParamsSchema }), async (req, res, next) => {
     try {
       const { id } = req.params as z.infer<typeof idParamsSchema>;
-      await novelService.deleteNovel(id);
+      await novelService.deleteNovel(id, req.user?.id, req.user?.role);
       res.status(200).json({
         success: true,
         message: "删除小说成功。",

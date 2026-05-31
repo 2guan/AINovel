@@ -396,6 +396,8 @@ model Novel {
   imageTasks         ImageGenerationTask[]
   imageAssets        ImageAsset[]
   sideEffectJobs     NovelSideEffectJob[]
+  userId             String?
+  user               User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt          DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
@@ -407,6 +409,7 @@ model Novel {
   @@index([sourceNovelId])
   @@index([sourceKnowledgeDocumentId])
   @@index([continuationBookAnalysisId])
+  @@index([userId])
 }
 
 model PromptAddendum {
@@ -935,6 +938,8 @@ model ImageGenerationTask {
   error           String?
   startedAt       DateTime?
   finishedAt      DateTime?
+  userId          String?
+  user            User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
   baseCharacter   BaseCharacter?    @relation(fields: [baseCharacterId], references: [id], onDelete: Cascade)
   novel           Novel?            @relation(fields: [novelId], references: [id], onDelete: Cascade)
   assets          ImageAsset[]
@@ -944,6 +949,7 @@ model ImageGenerationTask {
   @@index([sceneType, status])
   @@index([baseCharacterId, createdAt])
   @@index([novelId, createdAt])
+  @@index([userId])
 }
 
 model StyleExtractionTask {
@@ -1025,13 +1031,16 @@ model NovelGenre {
   description String?
   template    String?
   parentId    String?
+  userId      String?
   parent      NovelGenre?  @relation("GenreChildren", fields: [parentId], references: [id])
+  user        User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
   children    NovelGenre[] @relation("GenreChildren")
   novels      Novel[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
   @@index([parentId])
+  @@index([userId])
 }
 
 model NovelStoryMode {
@@ -1041,7 +1050,9 @@ model NovelStoryMode {
   template          String?
   profileJson       String
   parentId          String?
+  userId            String?
   parent            NovelStoryMode?  @relation("StoryModeChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  user              User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
   children          NovelStoryMode[] @relation("StoryModeChildren")
   primaryNovels     Novel[]          @relation("NovelPrimaryStoryMode")
   secondaryNovels   Novel[]          @relation("NovelSecondaryStoryMode")
@@ -1049,6 +1060,7 @@ model NovelStoryMode {
   updatedAt         DateTime         @updatedAt
 
   @@index([parentId])
+  @@index([userId])
 }
 
 model World {
@@ -1080,6 +1092,8 @@ model World {
   structureJson      String?
   bindingSupportJson String?
   structureSchemaVersion Int @default(1)
+  userId             String?
+  user               User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   novels             Novel[]
   snapshots          WorldSnapshot[]
   deepeningQA        WorldDeepeningQA[]
@@ -1087,6 +1101,8 @@ model World {
   libraryItems       WorldPropertyLibrary[]
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
+
+  @@index([userId])
 }
 
 model WorldPropertyLibrary {
@@ -1198,6 +1214,8 @@ model StyleProfile {
   languageRulesJson  String?
   rhythmRulesJson    String?
   status             String   @default("active")
+  userId             String?
+  user               User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   antiAiBindings     StyleProfileAntiAiRule[]
   bindings           StyleBinding[]
   createdAt          DateTime @default(now())
@@ -1205,6 +1223,7 @@ model StyleProfile {
 
   @@index([status, updatedAt])
   @@index([sourceType, sourceRefId])
+  @@index([userId])
 }
 
 model StyleTemplate {
@@ -1713,6 +1732,8 @@ model NovelWorkflowTask {
   llmCallCount       Int                     @default(0)
   lastTokenRecordedAt DateTime?
   novel              Novel?                  @relation(fields: [novelId], references: [id], onDelete: SetNull)
+  userId             String?
+  user               User?                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   autoApprovalRecords AutoDirectorAutoApprovalRecord[]
   directorRun        DirectorRun?
   directorCommands   DirectorRunCommand[]
@@ -1726,6 +1747,7 @@ model NovelWorkflowTask {
   @@index([novelId, status, updatedAt])
   @@index([status, updatedAt])
   @@index([lane, updatedAt])
+  @@index([userId])
 }
 
 model DirectorRunCommand {
@@ -2524,11 +2546,14 @@ model KnowledgeDocument {
   bookAnalyses           BookAnalysis[]
   publishedFromAnalyses  BookAnalysis[]           @relation("BookAnalysisPublishedDocument")
   continuationNovels     Novel[]                  @relation("NovelKnowledgeContinuation")
+  userId                 String?
+  user                   User?                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
 
   @@index([status, updatedAt])
   @@index([title])
+  @@index([userId])
 }
 
 model KnowledgeDocumentVersion {
@@ -2824,4 +2849,21 @@ model TimelineCheckReport {
 
   @@index([novelId, chapterIndex])
   @@index([novelId, status])
+}
+
+model User {
+  id             String                @id @default(uuid())
+  username       String                @unique
+  passwordHash   String
+  role           String                @default("pending") // "admin" | "user" | "pending"
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  novels         Novel[]
+  worlds         World[]
+  knowledgeDocs  KnowledgeDocument[]
+  styleProfiles  StyleProfile[]
+  genres         NovelGenre[]
+  storyModes     NovelStoryMode[]
+  workflowTasks  NovelWorkflowTask[]
+  imageTasks     ImageGenerationTask[]
 }

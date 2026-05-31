@@ -55,8 +55,8 @@ export class DefaultNovelApplicationServices {
     return this.core.createNovel(...args);
   }
 
-  async getNovelById(id: string) {
-    const novel = await this.core.getNovelById(id);
+  async getNovelById(id: string, userId?: string, userRole?: string) {
+    const novel = await this.core.getNovelById(id, userId, userRole);
     if (!novel) {
       return null;
     }

@@ -8,6 +8,7 @@ import ServerStartupGate from "./components/layout/ServerStartupGate";
 import { APP_RUNTIME } from "./lib/constants";
 import AppRouter from "./router";
 import { Toaster } from "./components/ui/toast";
+import { useAuthStore } from "./store/authStore";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -20,6 +21,9 @@ const queryClient = new QueryClient({
 });
 
 const AppRouterProvider = APP_RUNTIME === "desktop" ? HashRouter : BrowserRouter;
+
+// Initialize user authentication state
+useAuthStore.getState().initialize();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

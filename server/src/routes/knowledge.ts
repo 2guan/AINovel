@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { ApiResponse } from "@ai-novel/shared/types/api";
 import { z } from "zod";
 import { authMiddleware } from "../middleware/auth";
+import { checkKnowledgeAccess } from "../middleware/tenant";
 import { validate } from "../middleware/validate";
 import { KnowledgeService } from "../services/knowledge/KnowledgeService";
 
@@ -44,11 +45,12 @@ const patchDocumentSchema = z.object({
 });
 
 router.use(authMiddleware);
+router.use("/documents/:id", checkKnowledgeAccess);
 
 router.get("/documents", validate({ query: listDocumentsQuerySchema }), async (req, res, next) => {
   try {
     const query = listDocumentsQuerySchema.parse(req.query);
-    const data = await knowledgeService.listDocuments(query);
+    const data = await knowledgeService.listDocuments(query, req.user?.id, req.user?.role);
     res.status(200).json({
       success: true,
       data,
@@ -62,7 +64,10 @@ router.get("/documents", validate({ query: listDocumentsQuerySchema }), async (r
 router.post("/documents", validate({ body: createDocumentSchema }), async (req, res, next) => {
   try {
     const body = req.body as z.infer<typeof createDocumentSchema>;
-    const data = await knowledgeService.createDocument(body);
+    const data = await knowledgeService.createDocument({
+      ...body,
+      userId: req.user?.id,
+    });
     res.status(201).json({
       success: true,
       data,

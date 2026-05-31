@@ -19,6 +19,17 @@ export const apiClient = axios.create({
   timeout: API_TIMEOUT_MS,
 });
 
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 const AUTO_DISMISS_SERVER_ERROR_TOAST = {
   duration: 4000,
   closeButton: false,
@@ -26,13 +37,24 @@ const AUTO_DISMISS_SERVER_ERROR_TOAST = {
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<ApiResponse<unknown>>) => {
+  (error: AxiosError<ApiResponse<unknown> & { status?: string }>) => {
     const status = error.response?.status;
     const backendError = error.response?.data?.error;
     const backendMessage = error.response?.data?.message;
     const silentErrorStatuses = error.config?.silentErrorStatuses ?? [];
     let title = backendError ?? error.message ?? "请求失败。";
     let description = backendMessage && backendMessage !== backendError ? backendMessage : undefined;
+
+    if (status === 401) {
+      localStorage.removeItem("token");
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    } else if (status === 403 && error.response?.data?.status === "PENDING_APPROVAL") {
+      if (window.location.pathname !== "/pending") {
+        window.location.href = "/pending";
+      }
+    }
 
     if (!status) {
       title = "网络连接失败，请检查网络后重试。";

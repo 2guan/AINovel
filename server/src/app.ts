@@ -9,6 +9,9 @@ import type { ApiResponse } from "@ai-novel/shared/types/api";
 import { ensureRuntimeDatabaseReady } from "./db/runtimeMigrations";
 import { errorHandler } from "./middleware/errorHandler";
 import { loadProviderApiKeys } from "./llm/factory";
+import authRouter from "./routes/auth";
+import userAdminRouter from "./routes/userAdmin";
+import { authMiddleware } from "./middleware/auth";
 import astrologyRouter from "./routes/astrology";
 import agentCatalogRouter from "./routes/agentCatalog";
 import agentRunsRouter from "./routes/agentRuns";
@@ -113,6 +116,9 @@ export function createApp() {
   app.use(express.json({ limit: jsonBodyLimit }));
 
   app.use("/api/health", healthRouter);
+  app.use("/api/auth", authRouter);
+  app.use(authMiddleware);
+  app.use("/api/admin", userAdminRouter);
   app.use("/api/agent-catalog", agentCatalogRouter);
   app.use("/api/agent-runs", agentRunsRouter);
   app.use("/api/book-analysis", bookAnalysisRouter);

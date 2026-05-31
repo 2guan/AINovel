@@ -20,7 +20,11 @@ import {
 export function registerCoreWorldRoutes(router: Router): void {
   router.post("/import", requireWorldWizard, validate({ body: worldImportSchema }), async (req, res, next) => {
     try {
-      const data = await worldService.importWorld(req.body as z.infer<typeof worldImportSchema>);
+      const input = {
+        ...(req.body as z.infer<typeof worldImportSchema>),
+        userId: req.user?.id,
+      };
+      const data = await worldService.importWorld(input);
       res.status(201).json({
         success: true,
         data,
@@ -31,9 +35,9 @@ export function registerCoreWorldRoutes(router: Router): void {
     }
   });
 
-  router.get("/", async (_req, res, next) => {
+  router.get("/", async (req, res, next) => {
     try {
-      const data = await worldService.listWorlds();
+      const data = await worldService.listWorlds(req.user?.id, req.user?.role);
       res.status(200).json({
         success: true,
         data,
@@ -46,7 +50,11 @@ export function registerCoreWorldRoutes(router: Router): void {
 
   router.post("/", validate({ body: createWorldSchema }), async (req, res, next) => {
     try {
-      const data = await worldService.createWorld(req.body as z.infer<typeof createWorldSchema>);
+      const input = {
+        ...(req.body as z.infer<typeof createWorldSchema>),
+        userId: req.user?.id,
+      };
+      const data = await worldService.createWorld(input);
       res.status(201).json({
         success: true,
         data,

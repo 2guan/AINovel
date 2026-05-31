@@ -54,6 +54,7 @@ export interface ImportWorldInput {
   name?: string;
   provider?: LLMProvider;
   model?: string;
+  userId?: string;
 }
 
 interface WorldTransferCallbacks {
@@ -375,6 +376,7 @@ export async function importWorldData(
       structureJson: structuredFields.structureJson as string,
       bindingSupportJson: structuredFields.bindingSupportJson as string,
       structureSchemaVersion: WORLD_STRUCTURE_SCHEMA_VERSION,
+      userId: input.userId ?? null,
     },
   });
   await callbacks.createSnapshot(world.id, "import-initial");
