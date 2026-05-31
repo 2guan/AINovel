@@ -1,4 +1,5 @@
 import type { DirectorConfirmRequest } from "@ai-novel/shared/types/novelDirector";
+import { prisma } from "../../../../db/prisma";
 import { isChapterTitleDiversityIssue } from "../../volume/chapterTitleDiversity";
 import type { NovelVolumeService } from "../../volume/NovelVolumeService";
 import type { NovelWorkflowService } from "../../workflow/NovelWorkflowService";
@@ -76,7 +77,15 @@ export class NovelDirectorChapterTitleRepairRuntime {
       throw new Error("只有自动导演任务支持 AI 修复章节标题。");
     }
     if (row.status === "running") {
-      throw new Error("当前自动导演仍在运行中，请等待当前步骤完成后再发起标题修复。");
+      const activeCommand = await prisma.directorRunCommand.findFirst({
+        where: {
+          taskId,
+          status: { in: ["queued", "leased", "running"] },
+        },
+      });
+      if (activeCommand) {
+        throw new Error("当前自动导演仍在运行中，请等待当前步骤完成后再发起标题修复。");
+      }
     }
 
     const seedPayload = parseSeedPayload<DirectorWorkflowSeedPayload>(row.seedPayloadJson) ?? {};
