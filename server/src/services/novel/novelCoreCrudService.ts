@@ -35,7 +35,7 @@ export class NovelCoreCrudService {
   }
 
   async listNovels({ page, limit }: PaginationInput, userId?: string, userRole?: string) {
-    const whereClause = userRole === "admin" ? {} : { userId: userId || "" };
+    const whereClause = (userRole === "admin" || (!userId && !userRole)) ? {} : { userId: userId || "" };
     const [items, total] = await Promise.all([
       prisma.novel.findMany({
         where: whereClause,
@@ -275,7 +275,7 @@ export class NovelCoreCrudService {
   }
 
   async getNovelById(id: string, userId?: string, userRole?: string) {
-    const whereClause = userRole === "admin" ? { id } : { id, userId: userId || "" };
+    const whereClause = (userRole === "admin" || (!userId && !userRole)) ? { id } : { id, userId: userId || "" };
     const row = await prisma.novel.findFirst({
       where: whereClause,
       include: {
@@ -297,7 +297,7 @@ export class NovelCoreCrudService {
   }
 
   async updateNovel(id: string, input: UpdateNovelInput, userId?: string, userRole?: string) {
-    const whereClause = userRole === "admin" ? { id } : { id, userId: userId || "" };
+    const whereClause = (userRole === "admin" || (!userId && !userRole)) ? { id } : { id, userId: userId || "" };
     const existing = await prisma.novel.findFirst({
       where: whereClause,
       select: {
@@ -406,7 +406,7 @@ export class NovelCoreCrudService {
   }
 
   async deleteNovel(id: string, userId?: string, userRole?: string) {
-    const whereClause = userRole === "admin" ? { id } : { id, userId: userId || "" };
+    const whereClause = (userRole === "admin" || (!userId && !userRole)) ? { id } : { id, userId: userId || "" };
     const existing = await prisma.novel.findFirst({ where: whereClause, select: { id: true } });
     if (!existing) {
       throw new Error("小说不存在或无权操作");
