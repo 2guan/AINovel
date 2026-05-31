@@ -9,6 +9,7 @@ import type {
 import type { ResourceRef } from "@ai-novel/shared/types/agent";
 import type { TaskStatus, UnifiedTaskDetail, UnifiedTaskSummary } from "@ai-novel/shared/types/task";
 import { prisma } from "../../../db/prisma";
+import type { Prisma } from "@prisma/client";
 import { AppError } from "../../../middleware/errorHandler";
 import { DirectorCommandService } from "../../novel/director/commands/DirectorCommandService";
 import {
@@ -413,40 +414,52 @@ export class NovelWorkflowTaskAdapter {
     status?: TaskStatus;
     keyword?: string;
     take: number;
+    userId?: string;
   }): Promise<UnifiedTaskSummary[]> {
     const archivedIds = await getArchivedTaskIds("novel_workflow");
-    const rows = await prisma.novelWorkflowTask.findMany({
-      where: {
-        ...(archivedIds.length
-          ? {
-            id: {
-              notIn: archivedIds,
-            },
-          }
-          : {}),
-        lane: "auto_director",
+    // Support both new tasks (userId field set) and legacy tasks (userId null, owned via novel.userId)
+    const userScopeFilter = input.userId
+      ? {
         OR: [
-          { novelId: { not: null } },
-          {
-            novelId: null,
-            OR: [
-              { currentItemKey: "auto_director" },
-              { currentItemKey: "novel_create" },
-              { currentItemKey: { startsWith: "candidate_" } },
-            ],
-          },
+          { userId: input.userId },
+          { userId: null, novel: { userId: input.userId } },
         ],
-        ...(input.status ? { status: input.status } : {}),
-        ...(input.keyword
-          ? {
-            OR: [
-              { title: { contains: input.keyword } },
-              { id: { contains: input.keyword } },
-              { novel: { title: { contains: input.keyword } } },
-            ],
-          }
-          : {}),
-      },
+      }
+      : {};
+    const buildBaseWhere = (): Prisma.NovelWorkflowTaskWhereInput => ({
+      ...(archivedIds.length
+        ? {
+          id: {
+            notIn: archivedIds,
+          },
+        }
+        : {}),
+      ...userScopeFilter,
+      lane: "auto_director" as const,
+      OR: [
+        { novelId: { not: null } },
+        {
+          novelId: null,
+          OR: [
+            { currentItemKey: "auto_director" },
+            { currentItemKey: "novel_create" },
+            { currentItemKey: { startsWith: "candidate_" } },
+          ],
+        },
+      ],
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.keyword
+        ? {
+          OR: [
+            { title: { contains: input.keyword } },
+            { id: { contains: input.keyword } },
+            { novel: { title: { contains: input.keyword } } },
+          ],
+        }
+        : {}),
+    });
+    const rows = await prisma.novelWorkflowTask.findMany({
+      where: buildBaseWhere(),
       include: {
         novel: {
           select: {
@@ -462,37 +475,7 @@ export class NovelWorkflowTaskAdapter {
     );
     const normalizedRows = healed.some(Boolean)
       ? await prisma.novelWorkflowTask.findMany({
-        where: {
-          ...(archivedIds.length
-            ? {
-              id: {
-                notIn: archivedIds,
-              },
-            }
-            : {}),
-          lane: "auto_director",
-          OR: [
-            { novelId: { not: null } },
-            {
-              novelId: null,
-              OR: [
-                { currentItemKey: "auto_director" },
-                { currentItemKey: "novel_create" },
-                { currentItemKey: { startsWith: "candidate_" } },
-              ],
-            },
-          ],
-          ...(input.status ? { status: input.status } : {}),
-          ...(input.keyword
-            ? {
-              OR: [
-                { title: { contains: input.keyword } },
-                { id: { contains: input.keyword } },
-                { novel: { title: { contains: input.keyword } } },
-              ],
-            }
-            : {}),
-        },
+        where: buildBaseWhere(),
         include: {
           novel: {
             select: {

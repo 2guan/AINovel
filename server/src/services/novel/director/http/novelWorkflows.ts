@@ -75,7 +75,8 @@ router.use(authMiddleware);
 router.post("/bootstrap", validate({ body: bootstrapSchema }), async (req, res, next) => {
   try {
     const body = req.body as z.infer<typeof bootstrapSchema>;
-    const row = await workflowService.bootstrapTask(body);
+    const userId = req.user?.id ?? null;
+    const row = await workflowService.bootstrapTask({ ...body, userId });
     const data = await workflowAdapter.detail(row.id);
     res.status(200).json({
       success: true,

@@ -330,6 +330,7 @@ export class NovelWorkflowStoreService {
     title?: string | null;
     seedPayload?: Record<string, unknown>;
     forceNew?: boolean;
+    userId?: string | null;
     initialState?: {
       stage: NovelWorkflowStage;
       itemKey?: string | null;
@@ -352,6 +353,7 @@ export class NovelWorkflowStoreService {
     const created = await prisma.novelWorkflowTask.create({
       data: {
         novelId: input.novelId ?? null,
+        userId: input.userId ?? null,
         lane: input.lane,
         title: defaultWorkflowTitle({
           lane: input.lane,

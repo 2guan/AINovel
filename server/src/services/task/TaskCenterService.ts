@@ -199,11 +199,12 @@ export class TaskCenterService {
     return overview;
   }
 
-  async listTasks(filters: ListTasksFilters = {}): Promise<UnifiedTaskListResponse> {
+  async listTasks(filters: ListTasksFilters & { userId?: string } = {}): Promise<UnifiedTaskListResponse> {
     const limit = normalizeLimit(filters.limit);
     const sourceTake = Math.max(60, limit * 4);
     const keyword = normalizeKeyword(filters.keyword);
     const cursorPayload = parseCursor(filters.cursor);
+    const { userId } = filters;
 
     const [bookTasks, novelTasks, knowledgeTasks, imageTasks, agentTasks, workflowTasks, styleExtractionTasks] = await Promise.all([
       filters.kind && filters.kind !== "book_analysis"
@@ -223,7 +224,7 @@ export class TaskCenterService {
         : this.agentAdapter.list({ status: filters.status, keyword, take: sourceTake }),
       filters.kind && filters.kind !== "novel_workflow"
         ? Promise.resolve<UnifiedTaskSummary[]>([])
-        : this.workflowAdapter.list({ status: filters.status, keyword, take: sourceTake }),
+        : this.workflowAdapter.list({ status: filters.status, keyword, take: sourceTake, userId }),
       filters.kind && filters.kind !== "style_extraction"
         ? Promise.resolve<UnifiedTaskSummary[]>([])
         : this.styleExtractionAdapter.list({ status: filters.status, keyword, take: sourceTake }),

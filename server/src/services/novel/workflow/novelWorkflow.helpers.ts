@@ -21,6 +21,7 @@ export interface BootstrapWorkflowInput {
   title?: string | null;
   seedPayload?: Record<string, unknown>;
   forceNew?: boolean;
+  userId?: string | null;
   initialState?: {
     stage: NovelWorkflowStage;
     itemKey?: string | null;

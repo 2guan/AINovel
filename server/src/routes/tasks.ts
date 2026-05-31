@@ -121,8 +121,10 @@ router.get("/auto-director-follow-ups/:taskId", validate({ params: autoDirectorF
   try {
     const { taskId } = req.params as z.infer<typeof autoDirectorFollowUpParamsSchema>;
     const readonly = req.query.revalidate === "true";
+    const userId = req.user?.id;
     const data = await autoDirectorFollowUpService.getDetail(taskId, {
       heal: !readonly,
+      userId,
     });
     if (!data) {
       res.status(404).json({
@@ -169,12 +171,14 @@ router.post("/auto-director-follow-ups/:taskId/actions", validate({
 router.get("/", validate({ query: listQuerySchema }), async (req, res, next) => {
   try {
     const query = listQuerySchema.parse(req.query);
+    const userId = req.user?.id;
     const data = await taskCenterService.listTasks({
       kind: query.kind as TaskKind | undefined,
       status: query.status as TaskStatus | undefined,
       keyword: query.keyword,
       limit: query.limit,
       cursor: query.cursor,
+      userId,
     });
     res.status(200).json({
       success: true,
