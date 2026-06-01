@@ -129,8 +129,8 @@ export function createApp() {
   app.use("/api/title-library", titleLibraryRouter);
   app.use("/api", styleEngineRouter);
   app.use("/api", styleEngineExtractionRouter);
-  app.use("/api/novels", novelRouter);
   app.use("/api/novels/director", novelDirectorRouter);
+  app.use("/api/novels", novelRouter);
   app.use("/api/novel-workflows", novelWorkflowsRouter);
   app.use("/api/novels", novelExportRouter);
   app.use("/api/worlds", worldRouter);

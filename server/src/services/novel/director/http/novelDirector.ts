@@ -41,6 +41,8 @@ import { DirectorTaskSnapshotService } from "../projections/DirectorTaskSnapshot
 import { NovelDirectorService } from "../NovelDirectorService";
 import { novelDirectorIdeaInspirationService } from "../NovelDirectorIdeaInspirationService";
 import { directorPersistedCandidateSchema } from "../runtime/novelDirectorSchemas";
+import { prisma } from "../../../../db/prisma";
+import { checkNovelAccess } from "../../../../middleware/tenant";
 
 const router = Router();
 const commandService = new DirectorCommandService();
@@ -277,6 +279,37 @@ function accepted<T>(data: T, message: string) {
   } satisfies ApiResponse<T>;
 }
 
+async function checkTaskAccess(req: any, res: any, next: any) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: "未登录或登录已过期。" });
+    return;
+  }
+  if (req.user.role === "admin") {
+    return next();
+  }
+  const { taskId } = req.params;
+  if (!taskId) {
+    return next();
+  }
+  try {
+    const task = await prisma.novelWorkflowTask.findUnique({
+      where: { id: taskId },
+      select: { userId: true },
+    });
+    if (!task) {
+      res.status(404).json({ success: false, message: "任务不存在。" });
+      return;
+    }
+    if (task.userId !== req.user.id) {
+      res.status(403).json({ success: false, message: "无权访问此任务。" });
+      return;
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
 router.post("/tasks", validate({ body: createTaskSchema }), async (req, res, next) => {
   try {
     const body = req.body as z.infer<typeof createTaskSchema>;
@@ -314,7 +347,7 @@ router.post("/idea-inspirations", validate({ body: ideaInspirationsSchema }), as
   }
 });
 
-router.post("/tasks/:taskId/commands", validate({ params: taskParamsSchema, body: appendCommandSchema }), async (req, res, next) => {
+router.post("/tasks/:taskId/commands", checkTaskAccess, validate({ params: taskParamsSchema, body: appendCommandSchema }), async (req, res, next) => {
   try {
     const { taskId } = req.params as z.infer<typeof taskParamsSchema>;
     const body = req.body as z.infer<typeof appendCommandSchema>;
@@ -384,7 +417,7 @@ router.post("/tasks/:taskId/commands", validate({ params: taskParamsSchema, body
   }
 });
 
-router.get("/tasks/:taskId", validate({ params: taskParamsSchema }), async (req, res, next) => {
+router.get("/tasks/:taskId", checkTaskAccess, validate({ params: taskParamsSchema }), async (req, res, next) => {
   try {
     const { taskId } = req.params as z.infer<typeof taskParamsSchema>;
     const data = await snapshotService.getTaskSnapshot(taskId) as DirectorTaskSnapshotResponse;
@@ -394,7 +427,7 @@ router.get("/tasks/:taskId", validate({ params: taskParamsSchema }), async (req,
   }
 });
 
-router.get("/tasks/:taskId/fact-inspection", validate({ params: taskParamsSchema }), async (req, res, next) => {
+router.get("/tasks/:taskId/fact-inspection", checkTaskAccess, validate({ params: taskParamsSchema }), async (req, res, next) => {
   try {
     const { taskId } = req.params as z.infer<typeof taskParamsSchema>;
     const data = await snapshotService.getTaskFactInspection(taskId) as DirectorTaskFactInspectionResponse;
@@ -404,7 +437,7 @@ router.get("/tasks/:taskId/fact-inspection", validate({ params: taskParamsSchema
   }
 });
 
-router.get("/novels/:novelId/fact-inspection", validate({ params: takeoverParamsSchema }), async (req, res, next) => {
+router.get("/novels/:novelId/fact-inspection", checkNovelAccess, validate({ params: takeoverParamsSchema }), async (req, res, next) => {
   try {
     const { novelId } = req.params as z.infer<typeof takeoverParamsSchema>;
     const data = await snapshotService.getNovelFactInspection(novelId) as DirectorTaskFactInspectionResponse;
@@ -423,7 +456,7 @@ router.get("/commands/:commandId/result", validate({ params: z.object({ commandI
   }
 });
 
-router.get("/takeover-readiness/:novelId", validate({ params: takeoverParamsSchema }), async (req, res, next) => {
+router.get("/takeover-readiness/:novelId", checkNovelAccess, validate({ params: takeoverParamsSchema }), async (req, res, next) => {
   try {
     const { novelId } = req.params as z.infer<typeof takeoverParamsSchema>;
     const data = await novelDirectorService.getTakeoverReadiness(novelId);
@@ -433,7 +466,7 @@ router.get("/takeover-readiness/:novelId", validate({ params: takeoverParamsSche
   }
 });
 
-router.get("/book-automation/:novelId", validate({ params: takeoverParamsSchema }), async (req, res, next) => {
+router.get("/book-automation/:novelId", checkNovelAccess, validate({ params: takeoverParamsSchema }), async (req, res, next) => {
   try {
     const { novelId } = req.params as z.infer<typeof takeoverParamsSchema>;
     const projection = await projectionService.getProjection(novelId);
@@ -444,7 +477,7 @@ router.get("/book-automation/:novelId", validate({ params: takeoverParamsSchema 
   }
 });
 
-router.get("/workspace-analysis/:novelId", validate({ params: takeoverParamsSchema, query: workspaceAnalysisQuerySchema }), async (req, res, next) => {
+router.get("/workspace-analysis/:novelId", checkNovelAccess, validate({ params: takeoverParamsSchema, query: workspaceAnalysisQuerySchema }), async (req, res, next) => {
   try {
     const { novelId } = req.params as z.infer<typeof takeoverParamsSchema>;
     const query = req.query as z.infer<typeof workspaceAnalysisQuerySchema>;
@@ -459,7 +492,7 @@ router.get("/workspace-analysis/:novelId", validate({ params: takeoverParamsSche
   }
 });
 
-router.get("/manual-edit-impact/:novelId", validate({ params: takeoverParamsSchema, query: manualEditImpactQuerySchema }), async (req, res, next) => {
+router.get("/manual-edit-impact/:novelId", checkNovelAccess, validate({ params: takeoverParamsSchema, query: manualEditImpactQuerySchema }), async (req, res, next) => {
   try {
     const { novelId } = req.params as z.infer<typeof takeoverParamsSchema>;
     const query = req.query as z.infer<typeof manualEditImpactQuerySchema>;
