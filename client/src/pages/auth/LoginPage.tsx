@@ -92,9 +92,7 @@ export default function LoginPage() {
         <Card className="border-slate-800/80 bg-slate-900/60 backdrop-blur-xl shadow-2xl">
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl text-slate-100">密码登录</CardTitle>
-            <CardDescription className="text-slate-400">
-              默认管理员：admin / admin2026
-            </CardDescription>
+
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
