@@ -64,9 +64,9 @@ services:
       - IMAGE_STORAGE_ROOT=storage/generated-images
     volumes:
       - ./storage:/app/storage
-    # 启动命令：在启动时动态为 SQLite 生成一次 Prisma Client，运行 SQLite 自动迁移，直接运行编译后的 JS 种子文件完成数据注入，然后启动服务
+    # 启动命令：在启动时动态为 SQLite 生成一次 Prisma Client，同步 SQLite 数据模型结构，直接运行编译后的 JS 种子文件完成数据注入，然后启动服务
     command: >
-      sh -c "/app/node_modules/.bin/prisma generate --config /app/server/prisma.config.ts && /app/node_modules/.bin/prisma migrate deploy && node /app/server/dist/db/seed.js && node ./server/dist/app.js"
+      sh -c "/app/node_modules/.bin/prisma generate --config /app/server/prisma.config.ts && /app/node_modules/.bin/prisma db push --accept-data-loss && node /app/server/dist/db/seed.js && node ./server/dist/app.js"
 
   # -------------------------------------------------------------
   # 3. 前端 Web 服务 (Vite + Nginx)

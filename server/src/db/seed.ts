@@ -1,8 +1,4 @@
 import "dotenv/config";
-import Database from "better-sqlite3";
-import path from "node:path";
-import { getDatabaseUrl } from "../config/database";
-import { resolveDatabaseFilePath } from "../runtime/appPaths";
 import { prisma } from "./prisma";
 import { hashPassword } from "../utils/auth";
 import {
@@ -10,30 +6,8 @@ import {
   hasSystemResourceBootstrapChanges,
 } from "../services/bootstrap/SystemResourceBootstrapService";
 
-function resolveSqliteDatabasePath(databaseUrl: string): string {
-  const filePath = databaseUrl.slice("file:".length) || "./dev.db";
-  return path.isAbsolute(filePath) ? filePath : resolveDatabaseFilePath(filePath);
-}
-
 async function ensureAdminAndBackfill(): Promise<void> {
   console.log("开始同步用户数据与回填历史归属...");
-
-  const dbUrl = getDatabaseUrl();
-  console.log(`[seed] env DATABASE_URL: ${process.env.DATABASE_URL}`);
-  console.log(`[seed] resolved DATABASE_URL: ${dbUrl}`);
-  
-  if (dbUrl.startsWith("file:")) {
-    const sqlitePath = resolveSqliteDatabasePath(dbUrl);
-    console.log(`[seed] resolved SQLite path: ${sqlitePath}`);
-    try {
-      const db = new Database(sqlitePath);
-      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
-      console.log(`[seed] tables in database: ${JSON.stringify(tables.map(t => (t as any).name))}`);
-      db.close();
-    } catch (err) {
-      console.error(`[seed] failed to check SQLite tables:`, err);
-    }
-  }
 
   // 1. Ensure admin user exists
   let admin = await prisma.user.findUnique({
