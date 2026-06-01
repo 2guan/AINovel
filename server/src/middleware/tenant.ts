@@ -21,6 +21,12 @@ export async function checkNovelAccess(req: Request, res: Response, next: NextFu
     return next();
   }
 
+  // Exempt reserved static segments under /api/novels from being treated as novelIds
+  const EXEMPT_SEGMENTS = new Set(["director", "framing", "resource-recommendation"]);
+  if (EXEMPT_SEGMENTS.has(novelId)) {
+    return next();
+  }
+
   try {
     const novel = await prisma.novel.findUnique({
       where: { id: novelId },
