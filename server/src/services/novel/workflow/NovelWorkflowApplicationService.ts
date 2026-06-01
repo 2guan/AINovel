@@ -94,11 +94,17 @@ export class NovelWorkflowApplicationService {
     if (!existing) {
       throw new AppError("Workflow task not found.", 404);
     }
-    const novelTitle = await this.getNovelTitle(novelId);
+    const novel = await prisma.novel.findUnique({
+      where: { id: novelId },
+      select: { title: true, userId: true },
+    });
+    const novelTitle = novel?.title ?? null;
+    const userId = novel?.userId ?? existing.userId;
     return this.workflow.updateTaskWithRetry({
       where: { id: taskId },
       data: {
         novelId,
+        userId,
         title: novelTitle ?? existing.title,
         progress: Math.max(existing.progress, defaultProgressForStage(stage)),
         currentStage: stageLabel(stage),

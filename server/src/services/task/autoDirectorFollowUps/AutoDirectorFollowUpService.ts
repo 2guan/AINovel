@@ -59,8 +59,8 @@ export class AutoDirectorFollowUpService {
 
   private readonly workflowTaskAdapter = new NovelWorkflowTaskAdapter();
 
-  async getOverview(userId?: string): Promise<AutoDirectorFollowUpOverview> {
-    const rows = await this.loadRows({ heal: false, userId });
+  async getOverview(userId?: string, userRole?: string): Promise<AutoDirectorFollowUpOverview> {
+    const rows = await this.loadRows({ heal: false, userId, userRole });
     const knownTaskIds = new Set(rows.map((row) => row.id));
     const taskById = new Map(rows.map((row) => [row.id, row]));
     const channelSettings = await getAutoDirectorChannelSettings();
@@ -77,23 +77,22 @@ export class AutoDirectorFollowUpService {
     };
   }
 
-  async list(input: AutoDirectorFollowUpListInput & { userId?: string } = {}): Promise<AutoDirectorFollowUpListResponse> {
-    const { userId, ...listInput } = input;
-    const rows = await this.loadRows({ userId });
+  async list(input: AutoDirectorFollowUpListInput & { userId?: string; userRole?: string } = {}): Promise<AutoDirectorFollowUpListResponse> {
+    const rows = await this.loadRows({ userId: input.userId, userRole: input.userRole });
     const knownTaskIds = new Set(rows.map((row) => row.id));
     const taskById = new Map(rows.map((row) => [row.id, row]));
     const channelSettings = await getAutoDirectorChannelSettings();
-    const scopedRows = rows.filter((row) => matchesRowScopeFilters(row, listInput));
+    const scopedRows = rows.filter((row) => matchesRowScopeFilters(row, input));
     const scopedTaskItems = scopedRows
       .map((row) => projectFollowUpItem(row, knownTaskIds, channelSettings))
       .filter((item): item is AutoDirectorFollowUpItem => Boolean(item));
     const scopedItems = scopedTaskItems.concat(await this.loadAutoApprovalItems(scopedRows, taskById));
     const filteredItems = scopedItems
-      .filter((item) => matchesItemFilters(item, listInput))
+      .filter((item) => matchesItemFilters(item, input))
       .sort(compareFollowUpItems);
 
-    const page = Math.max(1, listInput.page ?? 1);
-    const pageSize = Math.max(1, listInput.pageSize ?? 20);
+    const page = Math.max(1, input.page ?? 1);
+    const pageSize = Math.max(1, input.pageSize ?? 20);
     const start = (page - 1) * pageSize;
 
     return {
@@ -115,7 +114,7 @@ export class AutoDirectorFollowUpService {
     };
   }
 
-  async getDetail(taskId: string, options: { heal?: boolean; userId?: string } = {}): Promise<AutoDirectorFollowUpDetail | null> {
+  async getDetail(taskId: string, userId?: string, userRole?: string, options: { heal?: boolean } = {}): Promise<AutoDirectorFollowUpDetail | null> {
     if (await isTaskArchived("novel_workflow", taskId)) {
       return null;
     }
@@ -125,10 +124,7 @@ export class AutoDirectorFollowUpService {
     }
 
     const rawRow = await prisma.novelWorkflowTask.findUnique({
-      where: {
-        id: taskId,
-        ...(options.userId ? { userId: options.userId } : {}),
-      },
+      where: { id: taskId },
       include: {
         novel: {
           select: {
@@ -139,6 +135,9 @@ export class AutoDirectorFollowUpService {
     }) as RawFollowUpWorkflowRow | null;
     const row = rawRow ? normalizeWorkflowRow(rawRow) : null;
     if (!row) {
+      return null;
+    }
+    if (userRole !== "admin" && userId && row.userId !== userId) {
       return null;
     }
 
@@ -158,7 +157,7 @@ export class AutoDirectorFollowUpService {
       return null;
     }
 
-    const task = await this.workflowTaskAdapter.detail(taskId, {
+    const task = await this.workflowTaskAdapter.detail(taskId, userId, userRole, {
       heal: options.heal,
     });
     if (!task) {
@@ -245,9 +244,9 @@ export class AutoDirectorFollowUpService {
     }, taskById));
   }
 
-  private async loadRows(options: { heal?: boolean; userId?: string } = {}): Promise<FollowUpWorkflowRow[]> {
+  private async loadRows(options: { heal?: boolean; userId?: string; userRole?: string } = {}): Promise<FollowUpWorkflowRow[]> {
     const archivedIds = await getArchivedTaskIds("novel_workflow");
-    const rows = await this.fetchRows(archivedIds, options.userId);
+    const rows = await this.fetchRows(archivedIds, options.userId, options.userRole);
     if (options.heal === false) {
       return rows;
     }
@@ -257,25 +256,14 @@ export class AutoDirectorFollowUpService {
     if (!healed.some(Boolean)) {
       return rows;
     }
-    return this.fetchRows(archivedIds, options.userId);
+    return this.fetchRows(archivedIds, options.userId, options.userRole);
   }
 
-  private async fetchRows(archivedIds: string[], userId?: string): Promise<FollowUpWorkflowRow[]> {
-    // Build user-scope filter: match tasks directly owned by userId (new),
-    // OR tasks with no userId but linked to a novel owned by userId (legacy).
-    const userScopeFilter = userId
-      ? {
-        OR: [
-          { userId },
-          { userId: null, novel: { userId } },
-        ],
-      }
-      : {};
-
+  private async fetchRows(archivedIds: string[], userId?: string, userRole?: string): Promise<FollowUpWorkflowRow[]> {
     const rawRows = await prisma.novelWorkflowTask.findMany({
       where: {
         lane: "auto_director",
-        ...userScopeFilter,
+        ...(userRole !== "admin" && userId ? { userId } : {}),
         OR: [
           { novelId: { not: null } },
           {
@@ -314,6 +302,7 @@ export class AutoDirectorFollowUpService {
         lastError: true,
         finishedAt: true,
         updatedAt: true,
+        userId: true,
         novel: {
           select: {
             title: true,

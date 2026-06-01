@@ -30,6 +30,8 @@ export class BookTaskAdapter {
     status?: TaskStatus;
     keyword?: string;
     take: number;
+    userId?: string;
+    userRole?: string;
   }): Promise<UnifiedTaskSummary[]> {
     if (input.status === "waiting_approval") {
       return [];
@@ -54,12 +56,14 @@ export class BookTaskAdapter {
             ],
           }
           : {}),
+        ...(input.userRole !== "admin" && input.userId ? { document: { userId: input.userId } } : {}),
       },
       include: {
         document: {
           select: {
             id: true,
             title: true,
+            userId: true,
           },
         },
       },
@@ -120,7 +124,7 @@ export class BookTaskAdapter {
     return summaries;
   }
 
-  async detail(id: string): Promise<UnifiedTaskDetail | null> {
+  async detail(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail | null> {
     if (await isTaskArchived("book_analysis", id)) {
       return null;
     }
@@ -132,11 +136,15 @@ export class BookTaskAdapter {
           select: {
             id: true,
             title: true,
+            userId: true,
           },
         },
       },
     });
     if (!row) {
+      return null;
+    }
+    if (userRole !== "admin" && userId && row.document.userId !== userId) {
       return null;
     }
     const normalizedStatus = resolveLiveBookAnalysisStatus({
@@ -209,41 +217,85 @@ export class BookTaskAdapter {
     };
   }
 
-  async retry(id: string): Promise<UnifiedTaskDetail> {
+  async retry(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail> {
     if (await isTaskArchived("book_analysis", id)) {
       throw new AppError("Task not found.", 404);
     }
 
-    const analysis = await bookAnalysisService.retryAnalysis(id);
-    const detail = await this.detail(analysis.id);
+    const analysis = await prisma.bookAnalysis.findUnique({
+      where: { id },
+      include: {
+        document: {
+          select: {
+            userId: true,
+          },
+        },
+      },
+    });
+    if (!analysis) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && analysis.document.userId !== userId) {
+      throw new AppError("Task not found.", 404);
+    }
+
+    await bookAnalysisService.retryAnalysis(id);
+    const detail = await this.detail(id, userId, userRole);
     if (!detail) {
       throw new AppError("Task not found after retry.", 404);
     }
     return detail;
   }
 
-  async cancel(id: string): Promise<UnifiedTaskDetail> {
+  async cancel(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail> {
     if (await isTaskArchived("book_analysis", id)) {
       throw new AppError("Task not found.", 404);
     }
 
-    const analysis = await bookAnalysisService.cancelAnalysis(id);
-    const detail = await this.detail(analysis.id);
+    const analysis = await prisma.bookAnalysis.findUnique({
+      where: { id },
+      include: {
+        document: {
+          select: {
+            userId: true,
+          },
+        },
+      },
+    });
+    if (!analysis) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && analysis.document.userId !== userId) {
+      throw new AppError("Task not found.", 404);
+    }
+
+    await bookAnalysisService.cancelAnalysis(id);
+    const detail = await this.detail(id, userId, userRole);
     if (!detail) {
       throw new AppError("Task not found after cancellation.", 404);
     }
     return detail;
   }
 
-  async archive(id: string): Promise<UnifiedTaskDetail | null> {
+  async archive(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail | null> {
     if (await isTaskArchived("book_analysis", id)) {
       return null;
     }
 
     const analysis = await prisma.bookAnalysis.findUnique({
       where: { id },
+      include: {
+        document: {
+          select: {
+            userId: true,
+          },
+        },
+      },
     });
     if (!analysis) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && analysis.document.userId !== userId) {
       throw new AppError("Task not found.", 404);
     }
 

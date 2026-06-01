@@ -31,16 +31,31 @@ export class StyleExtractionTaskAdapter {
     status?: TaskStatus;
     keyword?: string;
     take: number;
+    userId?: string;
+    userRole?: string;
   }): Promise<UnifiedTaskSummary[]> {
     if (input.status === "waiting_approval") {
       return [];
     }
     const status = toLegacyTaskStatus(input.status);
     const archivedIds = await getArchivedTaskIds("style_extraction");
+    const userProfileIds = (input.userRole !== "admin" && input.userId)
+      ? (await prisma.styleProfile.findMany({
+        where: { userId: input.userId },
+        select: { id: true },
+      })).map((p) => p.id)
+      : null;
+
     const rows = await prisma.styleExtractionTask.findMany({
       where: {
         ...(archivedIds.length ? { id: { notIn: archivedIds } } : {}),
         ...(status ? { status } : {}),
+        ...(userProfileIds !== null ? {
+          OR: [
+            { createdStyleProfileId: { in: userProfileIds } },
+            { createdStyleProfileId: null },
+          ]
+        } : {}),
         ...(input.keyword
           ? {
               OR: [
@@ -107,7 +122,7 @@ export class StyleExtractionTaskAdapter {
     });
   }
 
-  async detail(id: string): Promise<UnifiedTaskDetail | null> {
+  async detail(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail | null> {
     if (await isTaskArchived("style_extraction", id)) {
       return null;
     }
@@ -117,6 +132,15 @@ export class StyleExtractionTaskAdapter {
     });
     if (!row) {
       return null;
+    }
+    if (userRole !== "admin" && userId && row.createdStyleProfileId) {
+      const profile = await prisma.styleProfile.findUnique({
+        where: { id: row.createdStyleProfileId },
+        select: { userId: true },
+      });
+      if (!profile || profile.userId !== userId) {
+        return null;
+      }
     }
 
     const structuredFailure = resolveStructuredFailureSummary(row.error);
@@ -204,42 +228,84 @@ export class StyleExtractionTaskAdapter {
     };
   }
 
-  async retry(id: string): Promise<UnifiedTaskDetail> {
+  async retry(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail> {
     if (await isTaskArchived("style_extraction", id)) {
       throw new AppError("Task not found.", 404);
     }
+    const task = await prisma.styleExtractionTask.findUnique({
+      where: { id },
+      select: { createdStyleProfileId: true },
+    });
+    if (!task) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && task.createdStyleProfileId) {
+      const profile = await prisma.styleProfile.findUnique({
+        where: { id: task.createdStyleProfileId },
+        select: { userId: true },
+      });
+      if (!profile || profile.userId !== userId) {
+        throw new AppError("Task not found.", 404);
+      }
+    }
 
-    const task = await styleExtractionTaskService.retryTask(id);
-    const detail = await this.detail(task.id);
+    const retriedTask = await styleExtractionTaskService.retryTask(id);
+    const detail = await this.detail(retriedTask.id, userId, userRole);
     if (!detail) {
       throw new AppError("Task not found after retry.", 404);
     }
     return detail;
   }
 
-  async cancel(id: string): Promise<UnifiedTaskDetail> {
+  async cancel(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail> {
     if (await isTaskArchived("style_extraction", id)) {
       throw new AppError("Task not found.", 404);
     }
+    const task = await prisma.styleExtractionTask.findUnique({
+      where: { id },
+      select: { createdStyleProfileId: true },
+    });
+    if (!task) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && task.createdStyleProfileId) {
+      const profile = await prisma.styleProfile.findUnique({
+        where: { id: task.createdStyleProfileId },
+        select: { userId: true },
+      });
+      if (!profile || profile.userId !== userId) {
+        throw new AppError("Task not found.", 404);
+      }
+    }
 
-    const task = await styleExtractionTaskService.cancelTask(id);
-    const detail = await this.detail(task.id);
+    const cancelledTask = await styleExtractionTaskService.cancelTask(id);
+    const detail = await this.detail(cancelledTask.id, userId, userRole);
     if (!detail) {
       throw new AppError("Task not found after cancellation.", 404);
     }
     return detail;
   }
 
-  async archive(id: string): Promise<UnifiedTaskDetail | null> {
+  async archive(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail | null> {
     if (await isTaskArchived("style_extraction", id)) {
       return null;
     }
 
     const task = await prisma.styleExtractionTask.findUnique({
       where: { id },
+      select: { status: true, createdStyleProfileId: true },
     });
     if (!task) {
       throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && task.createdStyleProfileId) {
+      const profile = await prisma.styleProfile.findUnique({
+        where: { id: task.createdStyleProfileId },
+        select: { userId: true },
+      });
+      if (!profile || profile.userId !== userId) {
+        throw new AppError("Task not found.", 404);
+      }
     }
     if (!isArchivableTaskStatus(task.status as TaskStatus)) {
       throw new AppError("Only completed, failed, or cancelled tasks can be archived.", 400);

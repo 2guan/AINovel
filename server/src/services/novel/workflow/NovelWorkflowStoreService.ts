@@ -341,6 +341,16 @@ export class NovelWorkflowStoreService {
     };
   }) {
     const novelTitle = input.novelId ? await this.getNovelTitle(input.novelId) : null;
+    let userId = input.userId ?? null;
+    if (!userId && input.novelId) {
+      const novel = await prisma.novel.findUnique({
+        where: { id: input.novelId },
+        select: { userId: true },
+      });
+      if (novel?.userId) {
+        userId = novel.userId;
+      }
+    }
     const initialState = input.initialState;
     const initialStage = initialState?.stage
       ?? (input.lane === "auto_director" ? "auto_director" : "project_setup");
@@ -353,7 +363,7 @@ export class NovelWorkflowStoreService {
     const created = await prisma.novelWorkflowTask.create({
       data: {
         novelId: input.novelId ?? null,
-        userId: input.userId ?? null,
+        userId: userId,
         lane: input.lane,
         title: defaultWorkflowTitle({
           lane: input.lane,

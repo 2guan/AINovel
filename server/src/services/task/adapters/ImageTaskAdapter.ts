@@ -68,6 +68,8 @@ export class ImageTaskAdapter {
     status?: TaskStatus;
     keyword?: string;
     take: number;
+    userId?: string;
+    userRole?: string;
   }): Promise<UnifiedTaskSummary[]> {
     if (input.status === "waiting_approval") {
       return [];
@@ -84,6 +86,7 @@ export class ImageTaskAdapter {
           }
           : {}),
         ...(status ? { status } : {}),
+        ...(input.userRole !== "admin" && input.userId ? { userId: input.userId } : {}),
         ...(input.keyword
           ? {
             OR: [
@@ -135,7 +138,7 @@ export class ImageTaskAdapter {
     }));
   }
 
-  async detail(id: string): Promise<UnifiedTaskDetail | null> {
+  async detail(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail | null> {
     if (await isTaskArchived("image_generation", id)) {
       return null;
     }
@@ -158,6 +161,9 @@ export class ImageTaskAdapter {
       },
     });
     if (!row) {
+      return null;
+    }
+    if (userRole !== "admin" && userId && row.userId !== userId) {
       return null;
     }
 
@@ -212,41 +218,65 @@ export class ImageTaskAdapter {
     };
   }
 
-  async retry(id: string): Promise<UnifiedTaskDetail> {
+  async retry(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail> {
     if (await isTaskArchived("image_generation", id)) {
       throw new AppError("Task not found.", 404);
     }
+    const task = await prisma.imageGenerationTask.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+    if (!task) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && task.userId !== userId) {
+      throw new AppError("Task not found.", 404);
+    }
 
-    const task = await imageGenerationService.retryTask(id);
-    const detail = await this.detail(task.id);
+    const retriedTask = await imageGenerationService.retryTask(id);
+    const detail = await this.detail(retriedTask.id, userId, userRole);
     if (!detail) {
       throw new AppError("Task not found after retry.", 404);
     }
     return detail;
   }
 
-  async cancel(id: string): Promise<UnifiedTaskDetail> {
+  async cancel(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail> {
     if (await isTaskArchived("image_generation", id)) {
       throw new AppError("Task not found.", 404);
     }
+    const task = await prisma.imageGenerationTask.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+    if (!task) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && task.userId !== userId) {
+      throw new AppError("Task not found.", 404);
+    }
 
-    const task = await imageGenerationService.cancelTask(id);
-    const detail = await this.detail(task.id);
+    const cancelledTask = await imageGenerationService.cancelTask(id);
+    const detail = await this.detail(cancelledTask.id, userId, userRole);
     if (!detail) {
       throw new AppError("Task not found after cancellation.", 404);
     }
     return detail;
   }
 
-  async archive(id: string): Promise<UnifiedTaskDetail | null> {
+  async archive(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail | null> {
     if (await isTaskArchived("image_generation", id)) {
       return null;
     }
 
     const task = await prisma.imageGenerationTask.findUnique({
       where: { id },
+      select: { status: true, userId: true },
     });
     if (!task) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && task.userId !== userId) {
       throw new AppError("Task not found.", 404);
     }
     if (!isArchivableTaskStatus(task.status as TaskStatus)) {

@@ -97,7 +97,14 @@ export class RecoveryTaskService {
     }
   }
 
-  async listRecoveryCandidates(): Promise<RecoverableTaskListResponse> {
+  async listRecoveryCandidates(userId?: string, userRole?: string): Promise<RecoverableTaskListResponse> {
+    const userProfileIds = (userRole !== "admin" && userId)
+      ? (await prisma.styleProfile.findMany({
+        where: { userId },
+        select: { id: true },
+      })).map((p) => p.id)
+      : null;
+
     const [
       workflowRows,
       pipelineRows,
@@ -108,6 +115,7 @@ export class RecoveryTaskService {
       prisma.novelWorkflowTask.findMany({
         where: {
           lane: "auto_director",
+          ...(userRole !== "admin" && userId ? { userId } : {}),
           OR: [
             { novelId: { not: null } },
             {
@@ -140,6 +148,7 @@ export class RecoveryTaskService {
         where: {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
+          ...(userRole !== "admin" && userId ? { novel: { userId } } : {}),
         },
         select: {
           id: true,
@@ -159,6 +168,7 @@ export class RecoveryTaskService {
         where: {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
+          ...(userRole !== "admin" && userId ? { document: { userId } } : {}),
         },
         select: {
           id: true,
@@ -177,6 +187,7 @@ export class RecoveryTaskService {
         where: {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
+          ...(userRole !== "admin" && userId ? { userId } : {}),
         },
         select: {
           id: true,
@@ -197,6 +208,12 @@ export class RecoveryTaskService {
         where: {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
+          ...(userProfileIds !== null ? {
+            OR: [
+              { createdStyleProfileId: { in: userProfileIds } },
+              { createdStyleProfileId: null },
+            ]
+          } : {}),
         },
         select: {
           id: true,
@@ -293,8 +310,49 @@ export class RecoveryTaskService {
     return { items };
   }
 
-  async resumeRecoveryCandidate(kind: TaskKind, id: string): Promise<unknown> {
+  async checkCandidateAccess(kind: TaskKind, id: string, userId: string, userRole: string): Promise<void> {
+    if (userRole === "admin") {
+      return;
+    }
+    if (kind === "novel_workflow") {
+      const task = await prisma.novelWorkflowTask.findUnique({ where: { id }, select: { userId: true } });
+      if (!task || task.userId !== userId) {
+        throw new AppError("Task not found.", 404);
+      }
+    } else if (kind === "novel_pipeline") {
+      const job = await prisma.generationJob.findUnique({ where: { id }, include: { novel: { select: { userId: true } } } });
+      if (!job || job.novel.userId !== userId) {
+        throw new AppError("Task not found.", 404);
+      }
+    } else if (kind === "book_analysis") {
+      const analysis = await prisma.bookAnalysis.findUnique({ where: { id }, include: { document: { select: { userId: true } } } });
+      if (!analysis || analysis.document.userId !== userId) {
+        throw new AppError("Task not found.", 404);
+      }
+    } else if (kind === "image_generation") {
+      const task = await prisma.imageGenerationTask.findUnique({ where: { id }, select: { userId: true } });
+      if (!task || task.userId !== userId) {
+        throw new AppError("Task not found.", 404);
+      }
+    } else if (kind === "style_extraction") {
+      const task = await prisma.styleExtractionTask.findUnique({ where: { id }, select: { createdStyleProfileId: true } });
+      if (!task) {
+        throw new AppError("Task not found.", 404);
+      }
+      if (task.createdStyleProfileId) {
+        const profile = await prisma.styleProfile.findUnique({ where: { id: task.createdStyleProfileId }, select: { userId: true } });
+        if (!profile || profile.userId !== userId) {
+          throw new AppError("Task not found.", 404);
+        }
+      }
+    }
+  }
+
+  async resumeRecoveryCandidate(kind: TaskKind, id: string, userId?: string, userRole?: string): Promise<unknown> {
     await this.waitUntilReady();
+    if (userRole !== "admin" && userId) {
+      await this.checkCandidateAccess(kind, id, userId!, userRole ?? "");
+    }
     if (kind === "novel_workflow") {
       return this.resumeAutoDirectorWorkflow(id);
     }
@@ -317,21 +375,24 @@ export class RecoveryTaskService {
     throw new AppError(`Unsupported recovery task kind: ${kind}`, 400);
   }
 
-  async startResumeRecoveryCandidate(kind: TaskKind, id: string): Promise<unknown> {
+  async startResumeRecoveryCandidate(kind: TaskKind, id: string, userId?: string, userRole?: string): Promise<unknown> {
     await this.waitUntilReady();
+    if (userRole !== "admin" && userId) {
+      await this.checkCandidateAccess(kind, id, userId!, userRole ?? "");
+    }
     if (kind === "novel_workflow") {
       if (this.directorCommandService.enqueueRecoveryCommand) {
         return this.directorCommandService.enqueueRecoveryCommand(id);
       }
-      this.scheduleAutoDirectorRecovery(id);
+      this.scheduleAutoDirectorRecovery(id, userId, userRole);
       return null;
     }
-    this.scheduleRecoveryResume(kind, id);
+    this.scheduleRecoveryResume(kind, id, userId, userRole);
     return null;
   }
 
-  async startResumeAllRecoveryCandidates(): Promise<Array<{ kind: TaskKind; id: string }>> {
-    const { items } = await this.listRecoveryCandidates();
+  async startResumeAllRecoveryCandidates(userId?: string, userRole?: string): Promise<Array<{ kind: TaskKind; id: string }>> {
+    const { items } = await this.listRecoveryCandidates(userId, userRole);
     const selected: Array<{ kind: TaskKind; id: string }> = [];
     let highMemoryWorkflowStartedCount = 0;
     for (const item of items) {
@@ -346,7 +407,7 @@ export class RecoveryTaskService {
     void Promise.resolve()
       .then(async () => {
         for (const item of selected) {
-          await this.resumeRecoveryCandidate(item.kind, item.id);
+          await this.resumeRecoveryCandidate(item.kind, item.id, userId, userRole);
         }
       })
       .catch((error) => {
@@ -355,15 +416,15 @@ export class RecoveryTaskService {
     return selected;
   }
 
-  async resumeAllRecoveryCandidates(): Promise<Array<{ kind: TaskKind; id: string }>> {
-    const { items } = await this.listRecoveryCandidates();
+  async resumeAllRecoveryCandidates(userId?: string, userRole?: string): Promise<Array<{ kind: TaskKind; id: string }>> {
+    const { items } = await this.listRecoveryCandidates(userId, userRole);
     const resumed: Array<{ kind: TaskKind; id: string }> = [];
     let highMemoryWorkflowStartedCount = 0;
     for (const item of items) {
       if (item.kind === "novel_workflow" && highMemoryWorkflowStartedCount > 0) {
         continue;
       }
-      await this.resumeRecoveryCandidate(item.kind, item.id);
+      await this.resumeRecoveryCandidate(item.kind, item.id, userId, userRole);
       if (item.kind === "novel_workflow") {
         highMemoryWorkflowStartedCount += 1;
       }
@@ -372,9 +433,9 @@ export class RecoveryTaskService {
     return resumed;
   }
 
-  private scheduleRecoveryResume(kind: TaskKind, id: string): void {
+  private scheduleRecoveryResume(kind: TaskKind, id: string, userId?: string, userRole?: string): void {
     void Promise.resolve()
-      .then(() => this.resumeRecoveryCandidate(kind, id))
+      .then(() => this.resumeRecoveryCandidate(kind, id, userId, userRole))
       .catch((error) => {
         console.error(`[recovery] resume background task failed: ${kind}/${id}`, error);
       });
@@ -390,14 +451,14 @@ export class RecoveryTaskService {
     throw new AppError("Auto director recovery command service is unavailable.", 500);
   }
 
-  private scheduleAutoDirectorRecovery(id: string): void {
+  private scheduleAutoDirectorRecovery(id: string, userId?: string, userRole?: string): void {
     if (this.directorCommandService.enqueueRecoveryCommand) {
       void this.directorCommandService.enqueueRecoveryCommand(id).catch((error) => {
         console.error(`[recovery] auto director command enqueue failed: novel_workflow/${id}`, error);
       });
       return;
     }
-    this.scheduleRecoveryResume("novel_workflow", id);
+    this.scheduleRecoveryResume("novel_workflow", id, userId, userRole);
   }
 }
 

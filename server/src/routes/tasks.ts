@@ -63,9 +63,9 @@ const autoDirectorFollowUpActionBodySchema = z.object({
 
 router.use(authMiddleware);
 
-router.get("/overview", async (_req, res, next) => {
+router.get("/overview", async (req, res, next) => {
   try {
-    const data = await taskCenterService.getOverview();
+    const data = await taskCenterService.getOverview(req.user?.id, req.user?.role);
     res.status(200).json({
       success: true,
       data,
@@ -76,9 +76,9 @@ router.get("/overview", async (_req, res, next) => {
   }
 });
 
-router.get("/recovery-candidates", async (_req, res, next) => {
+router.get("/recovery-candidates", async (req, res, next) => {
   try {
-    const data = await recoveryTaskService.listRecoveryCandidates();
+    const data = await recoveryTaskService.listRecoveryCandidates(req.user?.id, req.user?.role);
     res.status(200).json({
       success: true,
       data,
@@ -89,9 +89,9 @@ router.get("/recovery-candidates", async (_req, res, next) => {
   }
 });
 
-router.post("/recovery-candidates/resume-all", async (_req, res, next) => {
+router.post("/recovery-candidates/resume-all", async (req, res, next) => {
   try {
-    const resumed = await recoveryTaskService.startResumeAllRecoveryCandidates();
+    const resumed = await recoveryTaskService.startResumeAllRecoveryCandidates(req.user?.id, req.user?.role);
     res.status(202).json({
       success: true,
       data: { resumed },
@@ -105,7 +105,7 @@ router.post("/recovery-candidates/resume-all", async (_req, res, next) => {
 router.post("/recovery-candidates/:kind/:id/resume", validate({ params: recoveryTaskParamsSchema }), async (req, res, next) => {
   try {
     const { kind, id } = req.params as z.infer<typeof recoveryTaskParamsSchema>;
-    const command = await recoveryTaskService.startResumeRecoveryCandidate(kind, id);
+    const command = await recoveryTaskService.startResumeRecoveryCandidate(kind, id, req.user?.id, req.user?.role);
     const data = { kind, id, command };
     res.status(202).json({
       success: true,
@@ -121,10 +121,8 @@ router.get("/auto-director-follow-ups/:taskId", validate({ params: autoDirectorF
   try {
     const { taskId } = req.params as z.infer<typeof autoDirectorFollowUpParamsSchema>;
     const readonly = req.query.revalidate === "true";
-    const userId = req.user?.id;
-    const data = await autoDirectorFollowUpService.getDetail(taskId, {
+    const data = await autoDirectorFollowUpService.getDetail(taskId, req.user?.id, req.user?.role, {
       heal: !readonly,
-      userId,
     });
     if (!data) {
       res.status(404).json({
@@ -155,9 +153,9 @@ router.post("/auto-director-follow-ups/:taskId/actions", validate({
       taskId,
       actionCode: body.actionCode,
       source: "web",
-      operatorId: "anonymous",
+      operatorId: req.user?.id ?? "anonymous",
       idempotencyKey: body.idempotencyKey,
-    });
+    }, req.user?.id, req.user?.role);
     res.status(200).json({
       success: true,
       data,
@@ -171,14 +169,14 @@ router.post("/auto-director-follow-ups/:taskId/actions", validate({
 router.get("/", validate({ query: listQuerySchema }), async (req, res, next) => {
   try {
     const query = listQuerySchema.parse(req.query);
-    const userId = req.user?.id;
     const data = await taskCenterService.listTasks({
       kind: query.kind as TaskKind | undefined,
       status: query.status as TaskStatus | undefined,
       keyword: query.keyword,
       limit: query.limit,
       cursor: query.cursor,
-      userId,
+      userId: req.user?.id,
+      userRole: req.user?.role,
     });
     res.status(200).json({
       success: true,
@@ -193,7 +191,7 @@ router.get("/", validate({ query: listQuerySchema }), async (req, res, next) => 
 router.get("/:kind/:id", validate({ params: taskParamsSchema }), async (req, res, next) => {
   try {
     const { kind, id } = req.params as z.infer<typeof taskParamsSchema>;
-    const data = await taskCenterService.getTaskDetail(kind, id);
+    const data = await taskCenterService.getTaskDetail(kind, id, req.user?.id, req.user?.role);
     if (!data) {
       res.status(404).json({
         success: false,
@@ -219,7 +217,7 @@ router.post("/:kind/:id/retry", validate({ params: taskParamsSchema, body: retry
       llmOverride: body.llmOverride,
       resume: body.resume,
       batchAlreadyStartedCount: body.batchAlreadyStartedCount,
-    });
+    }, req.user?.id, req.user?.role);
     res.status(200).json({
       success: true,
       data,
@@ -233,7 +231,7 @@ router.post("/:kind/:id/retry", validate({ params: taskParamsSchema, body: retry
 router.post("/:kind/:id/cancel", validate({ params: taskParamsSchema }), async (req, res, next) => {
   try {
     const { kind, id } = req.params as z.infer<typeof taskParamsSchema>;
-    const data = await taskCenterService.cancelTask(kind, id);
+    const data = await taskCenterService.cancelTask(kind, id, req.user?.id, req.user?.role);
     res.status(200).json({
       success: true,
       data,
@@ -247,7 +245,7 @@ router.post("/:kind/:id/cancel", validate({ params: taskParamsSchema }), async (
 router.post("/:kind/:id/archive", validate({ params: taskParamsSchema }), async (req, res, next) => {
   try {
     const { kind, id } = req.params as z.infer<typeof taskParamsSchema>;
-    const data = await taskCenterService.archiveTask(kind, id);
+    const data = await taskCenterService.archiveTask(kind, id, req.user?.id, req.user?.role);
     res.status(200).json({
       success: true,
       data,

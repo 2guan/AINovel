@@ -10,6 +10,8 @@ export interface ListTasksFilters {
   keyword?: string;
   limit?: number;
   cursor?: string;
+  userId?: string;
+  userRole?: string;
 }
 
 export interface CursorPayload {

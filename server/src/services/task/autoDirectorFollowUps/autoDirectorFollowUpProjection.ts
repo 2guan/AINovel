@@ -74,6 +74,7 @@ export interface RawFollowUpWorkflowRow {
   lastError: string | null;
   finishedAt: Date | null;
   updatedAt: Date;
+  userId: string | null;
   novel?: {
     title: string;
   } | null;
@@ -98,6 +99,7 @@ export interface FollowUpWorkflowRow {
   lastError: string | null;
   finishedAt: Date | null;
   updatedAt: Date;
+  userId: string | null;
   novel?: {
     title: string;
   } | null;

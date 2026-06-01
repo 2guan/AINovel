@@ -121,6 +121,8 @@ export class PipelineTaskAdapter {
     status?: TaskStatus;
     keyword?: string;
     take: number;
+    userId?: string;
+    userRole?: string;
   }): Promise<UnifiedTaskSummary[]> {
     if (input.status === "waiting_approval") {
       return [];
@@ -145,12 +147,14 @@ export class PipelineTaskAdapter {
             ],
           }
           : {}),
+        ...(input.userRole !== "admin" && input.userId ? { novel: { userId: input.userId } } : {}),
       },
       include: {
         novel: {
           select: {
             id: true,
             title: true,
+            userId: true,
           },
         },
       },
@@ -161,7 +165,7 @@ export class PipelineTaskAdapter {
     return rows.map((row) => this.toSummary(row));
   }
 
-  async detail(id: string): Promise<UnifiedTaskDetail | null> {
+  async detail(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail | null> {
     if (await isTaskArchived("novel_pipeline", id)) {
       return null;
     }
@@ -173,11 +177,15 @@ export class PipelineTaskAdapter {
           select: {
             id: true,
             title: true,
+            userId: true,
           },
         },
       },
     });
     if (!row) {
+      return null;
+    }
+    if (userRole !== "admin" && userId && row.novel.userId !== userId) {
       return null;
     }
 
@@ -211,27 +219,47 @@ export class PipelineTaskAdapter {
     };
   }
 
-  async retry(id: string): Promise<UnifiedTaskDetail> {
+  async retry(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail> {
     if (await isTaskArchived("novel_pipeline", id)) {
       throw new AppError("Task not found.", 404);
     }
+    const job = await prisma.generationJob.findUnique({
+      where: { id },
+      include: { novel: { select: { userId: true } } },
+    });
+    if (!job) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && job.novel.userId !== userId) {
+      throw new AppError("Task not found.", 404);
+    }
 
-    const job = await this.novelService.retryPipelineJob(id);
-    const detail = await this.detail(job.id);
+    const retriedJob = await this.novelService.retryPipelineJob(id);
+    const detail = await this.detail(retriedJob.id, userId, userRole);
     if (!detail) {
       throw new AppError("Task not found after retry.", 404);
     }
     return detail;
   }
 
-  async cancel(id: string): Promise<UnifiedTaskDetail> {
+  async cancel(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail> {
     if (await isTaskArchived("novel_pipeline", id)) {
       throw new AppError("Task not found.", 404);
     }
+    const job = await prisma.generationJob.findUnique({
+      where: { id },
+      include: { novel: { select: { userId: true } } },
+    });
+    if (!job) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && job.novel.userId !== userId) {
+      throw new AppError("Task not found.", 404);
+    }
 
-    const job = await this.novelService.cancelPipelineJob(id);
-    await this.cancelLinkedAutoDirectorTask(job.id, job.novelId).catch(() => null);
-    const detail = await this.detail(job.id);
+    const cancelledJob = await this.novelService.cancelPipelineJob(id);
+    await this.cancelLinkedAutoDirectorTask(cancelledJob.id, cancelledJob.novelId).catch(() => null);
+    const detail = await this.detail(cancelledJob.id, userId, userRole);
     if (!detail) {
       throw new AppError("Task not found after cancellation.", 404);
     }
@@ -255,15 +283,19 @@ export class PipelineTaskAdapter {
     await this.workflowService.cancelTask(linkedWorkflow.id);
   }
 
-  async archive(id: string): Promise<UnifiedTaskDetail | null> {
+  async archive(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail | null> {
     if (await isTaskArchived("novel_pipeline", id)) {
       return null;
     }
 
     const job = await prisma.generationJob.findUnique({
       where: { id },
+      include: { novel: { select: { userId: true } } },
     });
     if (!job) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && job.novel.userId !== userId) {
       throw new AppError("Task not found.", 404);
     }
     if (!isArchivableTaskStatus(job.status as TaskStatus)) {

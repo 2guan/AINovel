@@ -75,9 +75,8 @@ router.use(authMiddleware);
 router.post("/bootstrap", validate({ body: bootstrapSchema }), async (req, res, next) => {
   try {
     const body = req.body as z.infer<typeof bootstrapSchema>;
-    const userId = req.user?.id ?? null;
-    const row = await workflowService.bootstrapTask({ ...body, userId });
-    const data = await workflowAdapter.detail(row.id);
+    const row = await workflowService.bootstrapTask({ ...body, userId: req.user!.id });
+    const data = await workflowAdapter.detail(row.id, req.user!.id, req.user!.role);
     res.status(200).json({
       success: true,
       data,
@@ -92,7 +91,7 @@ router.get("/novels/:novelId/auto-director", validate({ params: novelParamsSchem
   try {
     const { novelId } = req.params as z.infer<typeof novelParamsSchema>;
     const row = await workflowService.findActiveTaskByNovelAndLane(novelId, "auto_director");
-    const data = row ? await workflowAdapter.detail(row.id, { seedPayloadMode: "compact" }) : null;
+    const data = row ? await workflowAdapter.detail(row.id, req.user!.id, req.user!.role, { seedPayloadMode: "compact" }) : null;
     res.status(200).json({
       success: true,
       data,
@@ -155,7 +154,7 @@ router.post("/sync-stage", validate({ body: syncStageSchema }), async (req, res,
       progress: body.progress,
       status: body.status,
     });
-    const data = await workflowAdapter.detail(row.id);
+    const data = await workflowAdapter.detail(row.id, req.user!.id, req.user!.role);
     res.status(200).json({
       success: true,
       data,

@@ -91,6 +91,8 @@ export class KnowledgeTaskAdapter {
     status?: TaskStatus;
     keyword?: string;
     take: number;
+    userId?: string;
+    userRole?: string;
   }): Promise<UnifiedTaskSummary[]> {
     if (input.status === "waiting_approval") {
       return [];
@@ -98,6 +100,13 @@ export class KnowledgeTaskAdapter {
 
     const status = toLegacyTaskStatus(input.status);
     const archivedIds = await getArchivedTaskIds("knowledge_document");
+    const userDocIds = (input.userRole !== "admin" && input.userId)
+      ? (await prisma.knowledgeDocument.findMany({
+        where: { userId: input.userId },
+        select: { id: true },
+      })).map((d) => d.id)
+      : null;
+
     const rows = await prisma.ragIndexJob.findMany({
       where: {
         ownerType: "knowledge_document",
@@ -109,6 +118,7 @@ export class KnowledgeTaskAdapter {
           }
           : {}),
         ...(status ? { status } : {}),
+        ...(userDocIds !== null ? { ownerId: { in: userDocIds } } : {}),
       },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take: input.keyword ? Math.max(input.take * 3, input.take) : input.take,
@@ -119,6 +129,7 @@ export class KnowledgeTaskAdapter {
         id: {
           in: Array.from(new Set(rows.map((item) => item.ownerId))),
         },
+        ...(input.userRole !== "admin" && input.userId ? { userId: input.userId } : {}),
       },
       select: {
         id: true,
@@ -186,7 +197,7 @@ export class KnowledgeTaskAdapter {
       });
   }
 
-  async detail(id: string): Promise<UnifiedTaskDetail | null> {
+  async detail(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail | null> {
     if (await isTaskArchived("knowledge_document", id)) {
       return null;
     }
@@ -206,8 +217,15 @@ export class KnowledgeTaskAdapter {
         fileName: true,
         latestIndexStatus: true,
         lastIndexedAt: true,
+        userId: true,
       },
     });
+    if (!document) {
+      return null;
+    }
+    if (userRole !== "admin" && userId && document.userId !== userId) {
+      return null;
+    }
     const progress = parseJobProgress(row.payloadJson);
     const documentTitle = document?.title ?? "未命名知识文档";
     const statusValue = row.status as TaskStatus;
@@ -291,7 +309,7 @@ export class KnowledgeTaskAdapter {
     };
   }
 
-  async retry(id: string): Promise<UnifiedTaskDetail> {
+  async retry(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail> {
     if (await isTaskArchived("knowledge_document", id)) {
       throw new AppError("Task not found.", 404);
     }
@@ -302,18 +320,18 @@ export class KnowledgeTaskAdapter {
     if (!job || job.ownerType !== "knowledge_document") {
       throw new AppError("Task not found.", 404);
     }
+    const document = await prisma.knowledgeDocument.findUnique({
+      where: { id: job.ownerId },
+      select: { id: true, userId: true },
+    });
+    if (!document || (userRole !== "admin" && userId && document.userId !== userId)) {
+      throw new AppError("Task not found.", 404);
+    }
     if (job.status !== "failed" && job.status !== "cancelled") {
       throw new AppError("Only failed or cancelled knowledge index jobs can be retried.", 400);
     }
 
     if (job.jobType !== "delete") {
-      const document = await prisma.knowledgeDocument.findUnique({
-        where: { id: job.ownerId },
-        select: { id: true },
-      });
-      if (!document) {
-        throw new AppError("Knowledge document not found.", 404);
-      }
       await prisma.knowledgeDocument.update({
         where: { id: document.id },
         data: {
@@ -326,14 +344,14 @@ export class KnowledgeTaskAdapter {
       tenantId: job.tenantId,
       maxAttempts: job.maxAttempts,
     });
-    const detail = await this.detail(nextJob.id);
+    const detail = await this.detail(nextJob.id, userId, userRole);
     if (!detail) {
       throw new AppError("Task not found after retry.", 404);
     }
     return detail;
   }
 
-  async cancel(id: string): Promise<UnifiedTaskDetail> {
+  async cancel(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail> {
     if (await isTaskArchived("knowledge_document", id)) {
       throw new AppError("Task not found.", 404);
     }
@@ -342,6 +360,13 @@ export class KnowledgeTaskAdapter {
       where: { id },
     });
     if (!job || job.ownerType !== "knowledge_document") {
+      throw new AppError("Task not found.", 404);
+    }
+    const document = await prisma.knowledgeDocument.findUnique({
+      where: { id: job.ownerId },
+      select: { userId: true },
+    });
+    if (!document || (userRole !== "admin" && userId && document.userId !== userId)) {
       throw new AppError("Task not found.", 404);
     }
     if (job.status !== "queued" && job.status !== "running") {
@@ -352,14 +377,14 @@ export class KnowledgeTaskAdapter {
       status: "cancelled",
       lastError: null,
     });
-    const detail = await this.detail(id);
+    const detail = await this.detail(id, userId, userRole);
     if (!detail) {
       throw new AppError("Task not found after cancellation.", 404);
     }
     return detail;
   }
 
-  async archive(id: string): Promise<UnifiedTaskDetail | null> {
+  async archive(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail | null> {
     if (await isTaskArchived("knowledge_document", id)) {
       return null;
     }
@@ -368,6 +393,13 @@ export class KnowledgeTaskAdapter {
       where: { id },
     });
     if (!job || job.ownerType !== "knowledge_document") {
+      throw new AppError("Task not found.", 404);
+    }
+    const document = await prisma.knowledgeDocument.findUnique({
+      where: { id: job.ownerId },
+      select: { userId: true },
+    });
+    if (!document || (userRole !== "admin" && userId && document.userId !== userId)) {
       throw new AppError("Task not found.", 404);
     }
     if (!isArchivableTaskStatus(job.status as TaskStatus)) {

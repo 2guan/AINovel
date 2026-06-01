@@ -56,7 +56,7 @@ export class TaskCenterService {
 
   private readonly styleExtractionAdapter = new StyleExtractionTaskAdapter();
 
-  async getOverview(): Promise<TaskOverviewSummary> {
+  async getOverview(userId?: string, userRole?: string): Promise<TaskOverviewSummary> {
     const archivedIdsByKind = await getArchivedTaskIdsByKind(overviewTaskKinds);
     const archivedBookIds = archivedIdsByKind.get("book_analysis") ?? [];
     const archivedPipelineIds = archivedIdsByKind.get("novel_pipeline") ?? [];
@@ -65,6 +65,13 @@ export class TaskCenterService {
     const archivedAgentIds = archivedIdsByKind.get("agent_run") ?? [];
     const archivedWorkflowIds = archivedIdsByKind.get("novel_workflow") ?? [];
     const archivedStyleExtractionIds = archivedIdsByKind.get("style_extraction") ?? [];
+
+    const userDocIds = (userRole !== "admin" && userId)
+      ? (await prisma.knowledgeDocument.findMany({ where: { userId }, select: { id: true } })).map((d) => d.id)
+      : [];
+    const userProfileIds = (userRole !== "admin" && userId)
+      ? (await prisma.styleProfile.findMany({ where: { userId }, select: { id: true } })).map((p) => p.id)
+      : [];
 
     const [
       bookRows,
@@ -85,6 +92,7 @@ export class TaskCenterService {
         where: {
           status: { in: ["queued", "running", "succeeded", "failed", "cancelled"] },
           ...(archivedBookIds.length ? { id: { notIn: archivedBookIds } } : {}),
+          ...(userRole !== "admin" && userId ? { document: { userId } } : {}),
         },
         _count: { _all: true },
       }),
@@ -92,6 +100,7 @@ export class TaskCenterService {
         by: ["status"],
         where: {
           ...(archivedPipelineIds.length ? { id: { notIn: archivedPipelineIds } } : {}),
+          ...(userRole !== "admin" && userId ? { novel: { userId } } : {}),
         },
         _count: { _all: true },
       }),
@@ -100,6 +109,7 @@ export class TaskCenterService {
         where: {
           ownerType: "knowledge_document",
           ...(archivedKnowledgeIds.length ? { id: { notIn: archivedKnowledgeIds } } : {}),
+          ...(userRole !== "admin" && userId ? { ownerId: { in: userDocIds } } : {}),
         },
         _count: { _all: true },
       }),
@@ -107,6 +117,7 @@ export class TaskCenterService {
         by: ["status"],
         where: {
           ...(archivedImageIds.length ? { id: { notIn: archivedImageIds } } : {}),
+          ...(userRole !== "admin" && userId ? { userId } : {}),
         },
         _count: { _all: true },
       }),
@@ -114,6 +125,12 @@ export class TaskCenterService {
         by: ["status"],
         where: {
           ...(archivedAgentIds.length ? { id: { notIn: archivedAgentIds } } : {}),
+          ...(userRole !== "admin" && userId ? {
+            OR: [
+              { novel: { userId } },
+              { novelId: null },
+            ],
+          } : {}),
         },
         _count: { _all: true },
       }),
@@ -122,6 +139,7 @@ export class TaskCenterService {
         where: {
           lane: "auto_director",
           ...(archivedWorkflowIds.length ? { id: { notIn: archivedWorkflowIds } } : {}),
+          ...(userRole !== "admin" && userId ? { userId } : {}),
         },
         _count: { _all: true },
       }),
@@ -129,6 +147,12 @@ export class TaskCenterService {
         by: ["status"],
         where: {
           ...(archivedStyleExtractionIds.length ? { id: { notIn: archivedStyleExtractionIds } } : {}),
+          ...(userRole !== "admin" && userId ? {
+            OR: [
+              { createdStyleProfileId: { in: userProfileIds } },
+              { createdStyleProfileId: null },
+            ],
+          } : {}),
         },
         _count: { _all: true },
       }),
@@ -137,6 +161,7 @@ export class TaskCenterService {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
           ...(archivedBookIds.length ? { id: { notIn: archivedBookIds } } : {}),
+          ...(userRole !== "admin" && userId ? { document: { userId } } : {}),
         },
       }),
       prisma.generationJob.count({
@@ -144,6 +169,7 @@ export class TaskCenterService {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
           ...(archivedPipelineIds.length ? { id: { notIn: archivedPipelineIds } } : {}),
+          ...(userRole !== "admin" && userId ? { novel: { userId } } : {}),
         },
       }),
       prisma.imageGenerationTask.count({
@@ -151,6 +177,7 @@ export class TaskCenterService {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
           ...(archivedImageIds.length ? { id: { notIn: archivedImageIds } } : {}),
+          ...(userRole !== "admin" && userId ? { userId } : {}),
         },
       }),
       prisma.novelWorkflowTask.count({
@@ -159,6 +186,7 @@ export class TaskCenterService {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
           ...(archivedWorkflowIds.length ? { id: { notIn: archivedWorkflowIds } } : {}),
+          ...(userRole !== "admin" && userId ? { userId } : {}),
         },
       }),
       prisma.styleExtractionTask.count({
@@ -166,6 +194,12 @@ export class TaskCenterService {
           status: { in: ["queued", "running"] },
           pendingManualRecovery: true,
           ...(archivedStyleExtractionIds.length ? { id: { notIn: archivedStyleExtractionIds } } : {}),
+          ...(userRole !== "admin" && userId ? {
+            OR: [
+              { createdStyleProfileId: { in: userProfileIds } },
+              { createdStyleProfileId: null },
+            ],
+          } : {}),
         },
       }),
     ]);
@@ -199,35 +233,34 @@ export class TaskCenterService {
     return overview;
   }
 
-  async listTasks(filters: ListTasksFilters & { userId?: string } = {}): Promise<UnifiedTaskListResponse> {
+  async listTasks(filters: ListTasksFilters = {}): Promise<UnifiedTaskListResponse> {
     const limit = normalizeLimit(filters.limit);
     const sourceTake = Math.max(60, limit * 4);
     const keyword = normalizeKeyword(filters.keyword);
     const cursorPayload = parseCursor(filters.cursor);
-    const { userId } = filters;
 
     const [bookTasks, novelTasks, knowledgeTasks, imageTasks, agentTasks, workflowTasks, styleExtractionTasks] = await Promise.all([
       filters.kind && filters.kind !== "book_analysis"
         ? Promise.resolve<UnifiedTaskSummary[]>([])
-        : this.bookAdapter.list({ status: filters.status, keyword, take: sourceTake }),
+        : this.bookAdapter.list({ status: filters.status, keyword, take: sourceTake, userId: filters.userId, userRole: filters.userRole }),
       filters.kind && filters.kind !== "novel_pipeline"
         ? Promise.resolve<UnifiedTaskSummary[]>([])
-        : this.pipelineAdapter.list({ status: filters.status, keyword, take: sourceTake }),
+        : this.pipelineAdapter.list({ status: filters.status, keyword, take: sourceTake, userId: filters.userId, userRole: filters.userRole }),
       filters.kind && filters.kind !== "knowledge_document"
         ? Promise.resolve<UnifiedTaskSummary[]>([])
-        : this.knowledgeAdapter.list({ status: filters.status, keyword, take: sourceTake }),
+        : this.knowledgeAdapter.list({ status: filters.status, keyword, take: sourceTake, userId: filters.userId, userRole: filters.userRole }),
       filters.kind && filters.kind !== "image_generation"
         ? Promise.resolve<UnifiedTaskSummary[]>([])
-        : this.imageAdapter.list({ status: filters.status, keyword, take: sourceTake }),
+        : this.imageAdapter.list({ status: filters.status, keyword, take: sourceTake, userId: filters.userId, userRole: filters.userRole }),
       filters.kind && filters.kind !== "agent_run"
         ? Promise.resolve<UnifiedTaskSummary[]>([])
-        : this.agentAdapter.list({ status: filters.status, keyword, take: sourceTake }),
+        : this.agentAdapter.list({ status: filters.status, keyword, take: sourceTake, userId: filters.userId, userRole: filters.userRole }),
       filters.kind && filters.kind !== "novel_workflow"
         ? Promise.resolve<UnifiedTaskSummary[]>([])
-        : this.workflowAdapter.list({ status: filters.status, keyword, take: sourceTake, userId }),
+        : this.workflowAdapter.list({ status: filters.status, keyword, take: sourceTake, userId: filters.userId, userRole: filters.userRole }),
       filters.kind && filters.kind !== "style_extraction"
         ? Promise.resolve<UnifiedTaskSummary[]>([])
-        : this.styleExtractionAdapter.list({ status: filters.status, keyword, take: sourceTake }),
+        : this.styleExtractionAdapter.list({ status: filters.status, keyword, take: sourceTake, userId: filters.userId, userRole: filters.userRole }),
     ]);
 
     const linkedPipelineIds = filters.kind === "novel_pipeline"
@@ -251,26 +284,26 @@ export class TaskCenterService {
     };
   }
 
-  async getTaskDetail(kind: TaskKind, id: string): Promise<UnifiedTaskDetail | null> {
+  async getTaskDetail(kind: TaskKind, id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail | null> {
     if (kind === "book_analysis") {
-      return this.bookAdapter.detail(id);
+      return this.bookAdapter.detail(id, userId, userRole);
     }
     if (kind === "novel_pipeline") {
-      return this.pipelineAdapter.detail(id);
+      return this.pipelineAdapter.detail(id, userId, userRole);
     }
     if (kind === "knowledge_document") {
-      return this.knowledgeAdapter.detail(id);
+      return this.knowledgeAdapter.detail(id, userId, userRole);
     }
     if (kind === "agent_run") {
-      return this.agentAdapter.detail(id);
+      return this.agentAdapter.detail(id, userId, userRole);
     }
     if (kind === "novel_workflow") {
-      return this.workflowAdapter.detail(id);
+      return this.workflowAdapter.detail(id, userId, userRole, { heal: true });
     }
     if (kind === "style_extraction") {
-      return this.styleExtractionAdapter.detail(id);
+      return this.styleExtractionAdapter.detail(id, userId, userRole);
     }
-    return this.imageAdapter.detail(id);
+    return this.imageAdapter.detail(id, userId, userRole);
   }
 
   async retryTask(
@@ -281,18 +314,20 @@ export class TaskCenterService {
       resume?: boolean;
       batchAlreadyStartedCount?: number;
     },
+    userId?: string,
+    userRole?: string,
   ): Promise<UnifiedTaskDetail> {
     if (kind === "book_analysis") {
-      return this.bookAdapter.retry(id);
+      return this.bookAdapter.retry(id, userId, userRole);
     }
     if (kind === "novel_pipeline") {
-      return this.pipelineAdapter.retry(id);
+      return this.pipelineAdapter.retry(id, userId, userRole);
     }
     if (kind === "knowledge_document") {
-      return this.knowledgeAdapter.retry(id);
+      return this.knowledgeAdapter.retry(id, userId, userRole);
     }
     if (kind === "agent_run") {
-      return this.agentAdapter.retry(id);
+      return this.agentAdapter.retry(id, userId, userRole);
     }
     if (kind === "novel_workflow") {
       return this.workflowAdapter.retry({
@@ -300,63 +335,65 @@ export class TaskCenterService {
         llmOverride: options?.llmOverride,
         resume: options?.resume,
         batchAlreadyStartedCount: options?.batchAlreadyStartedCount,
+        userId,
+        userRole,
       });
     }
     if (kind === "image_generation") {
-      return this.imageAdapter.retry(id);
+      return this.imageAdapter.retry(id, userId, userRole);
     }
     if (kind === "style_extraction") {
-      return this.styleExtractionAdapter.retry(id);
+      return this.styleExtractionAdapter.retry(id, userId, userRole);
     }
     throw new AppError(`Unsupported task kind: ${kind}`, 400);
   }
 
-  async cancelTask(kind: TaskKind, id: string): Promise<UnifiedTaskDetail> {
+  async cancelTask(kind: TaskKind, id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail> {
     if (kind === "book_analysis") {
-      return this.bookAdapter.cancel(id);
+      return this.bookAdapter.cancel(id, userId, userRole);
     }
     if (kind === "novel_pipeline") {
-      return this.pipelineAdapter.cancel(id);
+      return this.pipelineAdapter.cancel(id, userId, userRole);
     }
     if (kind === "knowledge_document") {
-      return this.knowledgeAdapter.cancel(id);
+      return this.knowledgeAdapter.cancel(id, userId, userRole);
     }
     if (kind === "agent_run") {
-      return this.agentAdapter.cancel(id);
+      return this.agentAdapter.cancel(id, userId, userRole);
     }
     if (kind === "novel_workflow") {
-      return this.workflowAdapter.cancel(id);
+      return this.workflowAdapter.cancel(id, userId, userRole);
     }
     if (kind === "image_generation") {
-      return this.imageAdapter.cancel(id);
+      return this.imageAdapter.cancel(id, userId, userRole);
     }
     if (kind === "style_extraction") {
-      return this.styleExtractionAdapter.cancel(id);
+      return this.styleExtractionAdapter.cancel(id, userId, userRole);
     }
     throw new AppError(`Unsupported task kind: ${kind}`, 400);
   }
 
-  async archiveTask(kind: TaskKind, id: string): Promise<UnifiedTaskDetail | null> {
+  async archiveTask(kind: TaskKind, id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail | null> {
     if (kind === "book_analysis") {
-      return this.bookAdapter.archive(id);
+      return this.bookAdapter.archive(id, userId, userRole);
     }
     if (kind === "novel_pipeline") {
-      return this.pipelineAdapter.archive(id);
+      return this.pipelineAdapter.archive(id, userId, userRole);
     }
     if (kind === "knowledge_document") {
-      return this.knowledgeAdapter.archive(id);
+      return this.knowledgeAdapter.archive(id, userId, userRole);
     }
     if (kind === "agent_run") {
-      return this.agentAdapter.archive(id);
+      return this.agentAdapter.archive(id, userId, userRole);
     }
     if (kind === "novel_workflow") {
-      return this.workflowAdapter.archive(id);
+      return this.workflowAdapter.archive(id, userId, userRole);
     }
     if (kind === "image_generation") {
-      return this.imageAdapter.archive(id);
+      return this.imageAdapter.archive(id, userId, userRole);
     }
     if (kind === "style_extraction") {
-      return this.styleExtractionAdapter.archive(id);
+      return this.styleExtractionAdapter.archive(id, userId, userRole);
     }
     throw new AppError(`Unsupported task kind: ${kind}`, 400);
   }

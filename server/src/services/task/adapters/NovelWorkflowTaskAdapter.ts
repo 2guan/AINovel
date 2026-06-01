@@ -9,7 +9,6 @@ import type {
 import type { ResourceRef } from "@ai-novel/shared/types/agent";
 import type { TaskStatus, UnifiedTaskDetail, UnifiedTaskSummary } from "@ai-novel/shared/types/task";
 import { prisma } from "../../../db/prisma";
-import type { Prisma } from "@prisma/client";
 import { AppError } from "../../../middleware/errorHandler";
 import { DirectorCommandService } from "../../novel/director/commands/DirectorCommandService";
 import {
@@ -415,51 +414,42 @@ export class NovelWorkflowTaskAdapter {
     keyword?: string;
     take: number;
     userId?: string;
+    userRole?: string;
   }): Promise<UnifiedTaskSummary[]> {
     const archivedIds = await getArchivedTaskIds("novel_workflow");
-    // Support both new tasks (userId field set) and legacy tasks (userId null, owned via novel.userId)
-    const userScopeFilter = input.userId
-      ? {
-        OR: [
-          { userId: input.userId },
-          { userId: null, novel: { userId: input.userId } },
-        ],
-      }
-      : {};
-    const buildBaseWhere = (): Prisma.NovelWorkflowTaskWhereInput => ({
-      ...(archivedIds.length
-        ? {
-          id: {
-            notIn: archivedIds,
-          },
-        }
-        : {}),
-      ...userScopeFilter,
-      lane: "auto_director" as const,
-      OR: [
-        { novelId: { not: null } },
-        {
-          novelId: null,
-          OR: [
-            { currentItemKey: "auto_director" },
-            { currentItemKey: "novel_create" },
-            { currentItemKey: { startsWith: "candidate_" } },
-          ],
-        },
-      ],
-      ...(input.status ? { status: input.status } : {}),
-      ...(input.keyword
-        ? {
-          OR: [
-            { title: { contains: input.keyword } },
-            { id: { contains: input.keyword } },
-            { novel: { title: { contains: input.keyword } } },
-          ],
-        }
-        : {}),
-    });
     const rows = await prisma.novelWorkflowTask.findMany({
-      where: buildBaseWhere(),
+      where: {
+        ...(archivedIds.length
+          ? {
+            id: {
+              notIn: archivedIds,
+            },
+          }
+          : {}),
+        lane: "auto_director",
+        ...(input.userRole !== "admin" && input.userId ? { userId: input.userId } : {}),
+        OR: [
+          { novelId: { not: null } },
+          {
+            novelId: null,
+            OR: [
+              { currentItemKey: "auto_director" },
+              { currentItemKey: "novel_create" },
+              { currentItemKey: { startsWith: "candidate_" } },
+            ],
+          },
+        ],
+        ...(input.status ? { status: input.status } : {}),
+        ...(input.keyword
+          ? {
+            OR: [
+              { title: { contains: input.keyword } },
+              { id: { contains: input.keyword } },
+              { novel: { title: { contains: input.keyword } } },
+            ],
+          }
+          : {}),
+      },
       include: {
         novel: {
           select: {
@@ -475,7 +465,38 @@ export class NovelWorkflowTaskAdapter {
     );
     const normalizedRows = healed.some(Boolean)
       ? await prisma.novelWorkflowTask.findMany({
-        where: buildBaseWhere(),
+        where: {
+          ...(archivedIds.length
+            ? {
+              id: {
+                notIn: archivedIds,
+              },
+            }
+            : {}),
+          lane: "auto_director",
+          ...(input.userRole !== "admin" && input.userId ? { userId: input.userId } : {}),
+          OR: [
+            { novelId: { not: null } },
+            {
+              novelId: null,
+              OR: [
+                { currentItemKey: "auto_director" },
+                { currentItemKey: "novel_create" },
+                { currentItemKey: { startsWith: "candidate_" } },
+              ],
+            },
+          ],
+          ...(input.status ? { status: input.status } : {}),
+          ...(input.keyword
+            ? {
+              OR: [
+                { title: { contains: input.keyword } },
+                { id: { contains: input.keyword } },
+                { novel: { title: { contains: input.keyword } } },
+              ],
+            }
+            : {}),
+        },
         include: {
           novel: {
             select: {
@@ -505,6 +526,8 @@ export class NovelWorkflowTaskAdapter {
 
   async detail(
     id: string,
+    userId?: string,
+    userRole?: string,
     options: {
       heal?: boolean;
       seedPayloadMode?: "full" | "compact" | "none";
@@ -528,6 +551,9 @@ export class NovelWorkflowTaskAdapter {
       },
     });
     if (!row) {
+      return null;
+    }
+    if (userRole !== "admin" && userId && row.userId !== userId) {
       return null;
     }
 
@@ -612,13 +638,18 @@ export class NovelWorkflowTaskAdapter {
     llmOverride?: Pick<DirectorLLMOptions, "provider" | "model" | "temperature">;
     resume?: boolean;
     batchAlreadyStartedCount?: number;
+    userId?: string;
+    userRole?: string;
   }): Promise<UnifiedTaskDetail> {
-    const { id, llmOverride, resume, batchAlreadyStartedCount } = input;
+    const { id, llmOverride, resume, batchAlreadyStartedCount, userId, userRole } = input;
     if (await isTaskArchived("novel_workflow", id)) {
       throw new AppError("Task not found.", 404);
     }
     const row = await this.workflowService.getTaskById(id);
     if (!row) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && row.userId !== userId) {
       throw new AppError("Task not found.", 404);
     }
     const shouldResumeAutoDirector = row.lane === "auto_director" && (
@@ -635,14 +666,14 @@ export class NovelWorkflowTaskAdapter {
         forceResume: true,
       });
     }
-    const detail = await this.detail(id);
+    const detail = await this.detail(id, userId, userRole);
     if (!detail) {
       throw new AppError("Task not found after retry.", 404);
     }
     return detail;
   }
 
-  async cancel(id: string): Promise<UnifiedTaskDetail> {
+  async cancel(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail> {
     if (await isTaskArchived("novel_workflow", id)) {
       throw new AppError("Task not found.", 404);
     }
@@ -650,28 +681,34 @@ export class NovelWorkflowTaskAdapter {
     if (!row) {
       throw new AppError("Task not found.", 404);
     }
+    if (userRole !== "admin" && userId && row.userId !== userId) {
+      throw new AppError("Task not found.", 404);
+    }
     if (row.lane === "auto_director") {
       await this.directorCommandService.enqueueCancelCommand(id);
     } else {
       await this.workflowService.cancelTask(id);
     }
-    const detail = await this.detail(id);
+    const detail = await this.detail(id, userId, userRole);
     if (!detail) {
       throw new AppError("Task not found after cancellation.", 404);
     }
     return detail;
   }
 
-  async archive(id: string): Promise<UnifiedTaskDetail | null> {
+  async archive(id: string, userId?: string, userRole?: string): Promise<UnifiedTaskDetail | null> {
     if (await isTaskArchived("novel_workflow", id)) {
       return null;
     }
 
     const row = await prisma.novelWorkflowTask.findUnique({
       where: { id },
-      select: { status: true },
+      select: { status: true, userId: true },
     });
     if (!row) {
+      throw new AppError("Task not found.", 404);
+    }
+    if (userRole !== "admin" && userId && row.userId !== userId) {
       throw new AppError("Task not found.", 404);
     }
     if (!isArchivableTaskStatus(row.status as TaskStatus)) {

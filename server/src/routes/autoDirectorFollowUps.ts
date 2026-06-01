@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import type { ApiResponse } from "@ai-novel/shared/types/api";
 import { z } from "zod";
 import {
@@ -56,16 +56,15 @@ const batchActionBodySchema = z.object({
   batchRequestKey: z.string().trim().min(1),
 });
 
-function resolveOperatorId(): string {
-  return "anonymous";
+function resolveOperatorId(req: any): string {
+  return req.user?.id || "anonymous";
 }
 
 router.use(authMiddleware);
 
-router.get("/overview", async (req, res, next) => {
+router.get("/overview", async (req: any, res, next) => {
   try {
-    const userId = req.user?.id;
-    const data = await followUpService.getOverview(userId);
+    const data = await followUpService.getOverview(req.user?.id, req.user?.role);
     res.status(200).json({
       success: true,
       data,
@@ -76,16 +75,16 @@ router.get("/overview", async (req, res, next) => {
   }
 });
 
-router.post("/batch-actions", validate({ body: batchActionBodySchema }), async (req, res, next) => {
+router.post("/batch-actions", validate({ body: batchActionBodySchema }), async (req: any, res, next) => {
   try {
     const body = req.body as z.infer<typeof batchActionBodySchema>;
     const data = await actionExecutor.executeBatch({
       actionCode: body.actionCode,
       taskIds: body.taskIds,
       source: "web",
-      operatorId: resolveOperatorId(),
+      operatorId: resolveOperatorId(req),
       batchRequestKey: body.batchRequestKey,
-    });
+    }, req.user?.id, req.user?.role);
     res.status(200).json({
       success: true,
       data,
@@ -98,11 +97,14 @@ router.post("/batch-actions", validate({ body: batchActionBodySchema }), async (
   }
 });
 
-router.get("/", validate({ query: listQuerySchema }), async (req, res, next) => {
+router.get("/", validate({ query: listQuerySchema }), async (req: any, res, next) => {
   try {
     const query = listQuerySchema.parse(req.query);
-    const userId = req.user?.id;
-    const data = await followUpService.list({ ...query, userId });
+    const data = await followUpService.list({
+      ...query,
+      userId: req.user?.id,
+      userRole: req.user?.role,
+    });
     res.status(200).json({
       success: true,
       data,
@@ -113,11 +115,10 @@ router.get("/", validate({ query: listQuerySchema }), async (req, res, next) => 
   }
 });
 
-router.get("/:taskId", validate({ params: taskParamsSchema }), async (req, res, next) => {
+router.get("/:taskId", validate({ params: taskParamsSchema }), async (req: any, res, next) => {
   try {
     const { taskId } = req.params as z.infer<typeof taskParamsSchema>;
-    const userId = req.user?.id;
-    const data = await followUpService.getDetail(taskId, { userId });
+    const data = await followUpService.getDetail(taskId, req.user?.id, req.user?.role);
     if (!data) {
       res.status(404).json({
         success: false,
@@ -135,13 +136,11 @@ router.get("/:taskId", validate({ params: taskParamsSchema }), async (req, res, 
   }
 });
 
-router.get("/:taskId/revalidation", validate({ params: taskParamsSchema }), async (req, res, next) => {
+router.get("/:taskId/revalidation", validate({ params: taskParamsSchema }), async (req: any, res, next) => {
   try {
     const { taskId } = req.params as z.infer<typeof taskParamsSchema>;
-    const userId = req.user?.id;
-    const data = await followUpService.getDetail(taskId, {
+    const data = await followUpService.getDetail(taskId, req.user?.id, req.user?.role, {
       heal: false,
-      userId,
     });
     if (!data) {
       res.status(404).json({
@@ -160,7 +159,7 @@ router.get("/:taskId/revalidation", validate({ params: taskParamsSchema }), asyn
   }
 });
 
-router.post("/:taskId/actions", validate({ params: taskParamsSchema, body: singleActionBodySchema }), async (req, res, next) => {
+router.post("/:taskId/actions", validate({ params: taskParamsSchema, body: singleActionBodySchema }), async (req: any, res, next) => {
   try {
     const { taskId } = req.params as z.infer<typeof taskParamsSchema>;
     const body = req.body as z.infer<typeof singleActionBodySchema>;
@@ -169,9 +168,9 @@ router.post("/:taskId/actions", validate({ params: taskParamsSchema, body: singl
       taskId,
       actionCode: body.actionCode,
       source: "web",
-      operatorId: resolveOperatorId(),
+      operatorId: resolveOperatorId(req),
       idempotencyKey: body.idempotencyKey,
-    });
+    }, req.user?.id, req.user?.role);
     res.status(200).json({
       success: true,
       data,

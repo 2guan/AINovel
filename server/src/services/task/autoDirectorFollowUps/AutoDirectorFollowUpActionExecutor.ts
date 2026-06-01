@@ -187,16 +187,16 @@ export class AutoDirectorFollowUpActionExecutor {
 
   readonly validationService = new AutoDirectorValidationService();
 
-  async execute(input: AutoDirectorActionRequest): Promise<AutoDirectorActionExecutionResult> {
+  async execute(input: AutoDirectorActionRequest, userId?: string, userRole?: string): Promise<AutoDirectorActionExecutionResult> {
     const executedCacheKey = buildExecutedCacheKey(input);
     const cached = EXECUTED_ACTION_CACHE.get(executedCacheKey);
     if (cached) {
-      return buildAlreadyProcessedResult(input, await this.safeGetTaskDetail(input.taskId) ?? cached.task ?? null);
+      return buildAlreadyProcessedResult(input, await this.safeGetTaskDetail(input.taskId, userId, userRole) ?? cached.task ?? null);
     }
 
     const logged = await this.findLoggedExecution(input.idempotencyKey);
     if (logged && logged.resultCode === "executed") {
-      const task = await this.safeGetTaskDetail(input.taskId);
+      const task = await this.safeGetTaskDetail(input.taskId, userId, userRole);
       const result = buildAlreadyProcessedResult(input, task);
       EXECUTED_ACTION_CACHE.set(executedCacheKey, {
         ...result,
@@ -214,12 +214,15 @@ export class AutoDirectorFollowUpActionExecutor {
     if (row.lane !== "auto_director") {
       throw new AppError("Only auto director workflow tasks are supported.", 400);
     }
+    if (userRole !== "admin" && userId && row.userId !== userId) {
+      throw new AppError("Task not found.", 404);
+    }
 
     if (input.actionCode === "safe_fix_validation") {
-      return this.executeSafeFix(row, input, executedCacheKey, healed);
+      return this.executeSafeFix(row, input, executedCacheKey, healed, userId, userRole);
     }
     if (input.actionCode === "auto_backfill_structured_outline") {
-      return this.executeStructuredBackfill(row, input, executedCacheKey, healed);
+      return this.executeStructuredBackfill(row, input, executedCacheKey, healed, userId, userRole);
     }
 
     if (input.metadata?.batchAction === true) {
@@ -231,7 +234,7 @@ export class AutoDirectorFollowUpActionExecutor {
           actionCode: input.actionCode,
           code: "forbidden",
           message: "所选分区不支持该批量动作",
-          task: await this.safeGetTaskDetail(input.taskId),
+          task: await this.safeGetTaskDetail(input.taskId, userId, userRole),
         };
         await this.recordActionLog(input, result);
         return result;
@@ -246,7 +249,7 @@ export class AutoDirectorFollowUpActionExecutor {
         actionCode: input.actionCode,
         code: "state_changed",
         message: "状态已变化",
-        task: await this.safeGetTaskDetail(input.taskId),
+        task: await this.safeGetTaskDetail(input.taskId, userId, userRole),
       };
       await this.recordActionLog(input, result);
       return result;
@@ -259,7 +262,7 @@ export class AutoDirectorFollowUpActionExecutor {
         actionCode: input.actionCode,
         code: "forbidden",
         message: "当前任务不支持该操作",
-        task: await this.safeGetTaskDetail(input.taskId),
+        task: await this.safeGetTaskDetail(input.taskId, userId, userRole),
       };
       await this.recordActionLog(input, result);
       return result;
@@ -288,14 +291,14 @@ export class AutoDirectorFollowUpActionExecutor {
         actionCode: input.actionCode,
         code: "forbidden",
         message: blockingReasons.join("；") || "当前任务需要先重新校验。",
-        task: await this.safeGetTaskDetail(input.taskId),
+        task: await this.safeGetTaskDetail(input.taskId, userId, userRole),
       };
       await this.recordActionLog(input, result);
       return result;
     }
 
     try {
-      const task = await this.executeMutationAction(row, input);
+      const task = await this.executeMutationAction(row, input, userId, userRole);
       const result: AutoDirectorActionExecutionResult = {
         directorTaskId: input.taskId,
         taskId: input.taskId,
@@ -311,14 +314,14 @@ export class AutoDirectorFollowUpActionExecutor {
       const result = buildFailedResult(
         input,
         error instanceof Error ? error.message : "执行失败",
-        await this.safeGetTaskDetail(input.taskId),
+        await this.safeGetTaskDetail(input.taskId, userId, userRole),
       );
       await this.recordActionLog(input, result);
       return result;
     }
   }
 
-  async executeBatch(input: AutoDirectorBatchActionRequest): Promise<AutoDirectorBatchActionExecutionResult> {
+  async executeBatch(input: AutoDirectorBatchActionRequest, userId?: string, userRole?: string): Promise<AutoDirectorBatchActionExecutionResult> {
     if (!BATCH_ALLOWED_ACTIONS.has(input.actionCode)) {
       throw new AppError("Unsupported batch action.", 400);
     }
@@ -340,7 +343,7 @@ export class AutoDirectorFollowUpActionExecutor {
           batchAction: true,
           highMemoryStartedCount,
         },
-      });
+      }, userId, userRole);
       itemResults.push(result);
       if (result.code === "executed") {
         highMemoryStartedCount += 1;
@@ -412,6 +415,8 @@ export class AutoDirectorFollowUpActionExecutor {
     input: AutoDirectorActionRequest,
     executedCacheKey: string,
     healed: boolean,
+    userId?: string,
+    userRole?: string,
   ): Promise<AutoDirectorActionExecutionResult> {
     const validationResult = extractBlockedAutoDirectorValidationResult(row.seedPayloadJson);
     const safeFixPlan = buildAutoDirectorSafeFixPlan(validationResult);
@@ -427,7 +432,7 @@ export class AutoDirectorFollowUpActionExecutor {
         message: blockedLabels.length > 0
           ? `当前校验项包含高风险动作，不能安全修复，请人工处理：${blockedLabels.join("、")}`
           : "当前没有可安全修复项，请先重新校验或人工处理。",
-        task: await this.safeGetTaskDetail(input.taskId),
+        task: await this.safeGetTaskDetail(input.taskId, userId, userRole),
       };
       await this.recordActionLog(mergeActionMetadata(input, {
         safeFix: {
@@ -444,7 +449,7 @@ export class AutoDirectorFollowUpActionExecutor {
       validationResult,
       healed,
     });
-    const task = await this.safeGetTaskDetail(input.taskId);
+    const task = await this.safeGetTaskDetail(input.taskId, userId, userRole);
     const result: AutoDirectorActionExecutionResult = {
       directorTaskId: input.taskId,
       taskId: input.taskId,
@@ -468,6 +473,8 @@ export class AutoDirectorFollowUpActionExecutor {
     input: AutoDirectorActionRequest,
     executedCacheKey: string,
     healed: boolean,
+    userId?: string,
+    userRole?: string,
   ): Promise<AutoDirectorActionExecutionResult> {
     const validationResult = extractBlockedAutoDirectorValidationResult(row.seedPayloadJson);
     const canBackfill = validationResult?.requiredActions.some((action) => (
@@ -482,7 +489,7 @@ export class AutoDirectorFollowUpActionExecutor {
         actionCode: input.actionCode,
         code: "forbidden",
         message: "当前任务没有可自动补齐的章节拆分入口，请先查看任务详情。",
-        task: await this.safeGetTaskDetail(input.taskId),
+        task: await this.safeGetTaskDetail(input.taskId, userId, userRole),
       };
       await this.recordActionLog(input, result);
       return result;
@@ -504,7 +511,7 @@ export class AutoDirectorFollowUpActionExecutor {
       actionCode: input.actionCode,
       code: "executed",
       message: "AI 将补齐章节拆分并继续推进。",
-      task: await this.safeGetTaskDetail(input.taskId),
+      task: await this.safeGetTaskDetail(input.taskId, userId, userRole),
     };
     EXECUTED_ACTION_CACHE.set(executedCacheKey, result);
     await this.recordActionLog(mergeActionMetadata(input, {
@@ -519,6 +526,8 @@ export class AutoDirectorFollowUpActionExecutor {
   private async executeMutationAction(
     row: WorkflowTaskRow,
     input: AutoDirectorActionRequest,
+    userId?: string,
+    userRole?: string,
   ): Promise<AutoDirectorActionExecutionResult["task"]> {
     const batchAlreadyStartedCount = typeof input.metadata?.highMemoryStartedCount === "number" && input.metadata.highMemoryStartedCount > 0
       ? input.metadata.highMemoryStartedCount
@@ -534,7 +543,7 @@ export class AutoDirectorFollowUpActionExecutor {
         continueInput.batchAlreadyStartedCount = batchAlreadyStartedCount;
       }
       await this.novelDirectorService.continueTask(input.taskId, continueInput);
-      return this.safeGetTaskDetail(input.taskId);
+      return this.safeGetTaskDetail(input.taskId, userId, userRole);
     }
 
     if (input.actionCode === "continue_generic") {
@@ -543,7 +552,7 @@ export class AutoDirectorFollowUpActionExecutor {
         continueInput.batchAlreadyStartedCount = batchAlreadyStartedCount;
       }
       await this.novelDirectorService.continueTask(input.taskId, continueInput);
-      return this.safeGetTaskDetail(input.taskId);
+      return this.safeGetTaskDetail(input.taskId, userId, userRole);
     }
 
     if (input.actionCode === "retry_with_task_model") {
@@ -551,9 +560,13 @@ export class AutoDirectorFollowUpActionExecutor {
         id: string;
         resume: true;
         batchAlreadyStartedCount?: number;
+        userId?: string;
+        userRole?: string;
       } = {
         id: input.taskId,
         resume: true,
+        userId,
+        userRole,
       };
       if (batchAlreadyStartedCount !== undefined) {
         retryInput.batchAlreadyStartedCount = batchAlreadyStartedCount;
@@ -567,10 +580,14 @@ export class AutoDirectorFollowUpActionExecutor {
       llmOverride: { provider: string; model: string; temperature: number };
       resume: true;
       batchAlreadyStartedCount?: number;
+      userId?: string;
+      userRole?: string;
     } = {
       id: input.taskId,
       llmOverride: routeModel,
       resume: true,
+      userId,
+      userRole,
     };
     if (batchAlreadyStartedCount !== undefined) {
       retryInput.batchAlreadyStartedCount = batchAlreadyStartedCount;
@@ -578,9 +595,9 @@ export class AutoDirectorFollowUpActionExecutor {
     return this.workflowTaskAdapter.retry(retryInput);
   }
 
-  private async safeGetTaskDetail(taskId: string) {
+  private async safeGetTaskDetail(taskId: string, userId?: string, userRole?: string) {
     try {
-      return await this.workflowTaskAdapter.detail(taskId);
+      return await this.workflowTaskAdapter.detail(taskId, userId, userRole);
     } catch {
       return null;
     }
