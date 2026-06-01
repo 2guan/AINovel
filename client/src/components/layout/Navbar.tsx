@@ -1,8 +1,9 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { LogOut, KeyRound } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import LLMSelector from "@/components/common/LLMSelector";
 import DesktopBrandMark from "@/components/layout/DesktopBrandMark";
+import ChangePasswordModal from "@/components/common/ChangePasswordModal";
 import { Button } from "@/components/ui/button";
 import {
   AUTO_DIRECTOR_MOBILE_CLASSES,
@@ -53,6 +54,17 @@ export default function Navbar(props: NavbarProps) {
             <span className="text-xs text-muted-foreground hidden md:inline">
               你好, <span className="font-semibold text-foreground">{user.username}</span>
             </span>
+            <ChangePasswordModal>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-muted-foreground hover:text-indigo-400 h-8 px-2 hover:bg-transparent"
+                title="修改密码"
+              >
+                <KeyRound className="h-4 w-4" />
+              </Button>
+            </ChangePasswordModal>
             <Button
               type="button"
               size="sm"
@@ -72,3 +84,4 @@ export default function Navbar(props: NavbarProps) {
     </header>
   );
 }
+
