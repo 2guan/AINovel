@@ -10,9 +10,11 @@ import {
   Plus,
   Sparkles,
   X,
+  LogOut,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import DesktopBrandMark from "../DesktopBrandMark";
+import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -39,6 +41,7 @@ interface MobileSiteShellProps {
 export default function MobileSiteShell({ children }: MobileSiteShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const logout = useAuthStore((state) => state.logout);
   const [moreOpen, setMoreOpen] = useState(false);
   const activeGroup = getMobileNavGroupForPath(location.pathname);
   const pageTitle = getMobilePageTitle(location.pathname);
@@ -81,6 +84,21 @@ export default function MobileSiteShell({ children }: MobileSiteShellProps) {
               aria-label={moreOpen ? "关闭更多入口" : "打开更多入口"}
             >
               {moreOpen ? <X className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              onClick={() => {
+                setMoreOpen(false);
+                logout();
+                navigate("/login");
+              }}
+              title="退出登录"
+              aria-label="退出登录"
+            >
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>
