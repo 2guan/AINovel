@@ -103,17 +103,30 @@ export function useSSE(options?: UseSSEOptions) {
 
       const controller = new AbortController();
       controllerRef.current = controller;
-
       try {
+        const token = localStorage.getItem("token");
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          ...(options?.headers ?? {}),
+        };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
         const response = await fetch(url.startsWith("http") ? url : `${API_BASE_URL}${url}`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(options?.headers ?? {}),
-          },
+          headers,
           body: JSON.stringify(body ?? {}),
           signal: controller.signal,
         });
+
+        if (response.status === 401) {
+          localStorage.removeItem("token");
+          if (window.location.pathname !== "/login") {
+            window.location.href = "/login";
+          }
+          throw new Error("登录已过期，请重新登录。");
+        }
 
         if (!response.ok || !response.body) {
           throw new Error(`请求失败，状态码 ${response.status}`);

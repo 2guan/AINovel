@@ -209,11 +209,17 @@ export default function AssistantChatPanel({
             payloadMessages.push({ role: "user", content: "继续当前任务。" });
           }
 
+          const token = localStorage.getItem("token");
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
+          if (token) {
+            headers["Authorization"] = `Bearer ${token}`;
+          }
+
           const response = await fetch(`${API_BASE_URL}/chat`, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers,
             body: JSON.stringify({
               messages: payloadMessages,
               systemPrompt: systemPrompt || undefined,
@@ -232,6 +238,14 @@ export default function AssistantChatPanel({
             }),
             signal: options.abortSignal,
           });
+
+          if (response.status === 401) {
+            localStorage.removeItem("token");
+            if (window.location.pathname !== "/login") {
+              window.location.href = "/login";
+            }
+            throw new Error("登录已过期，请重新登录。");
+          }
 
           if (!response.ok || !response.body) {
             throw new Error(`请求失败，状态码 ${response.status}`);
