@@ -78,6 +78,7 @@ export class NovelCoreCrudService {
           updatedAt: true,
           genre: { select: { id: true, name: true } },
           world: { select: { id: true, name: true, worldType: true } },
+          user: { select: { id: true, username: true } },
           _count: { select: { chapters: true, characters: true, plotBeats: true } },
         },
       }),

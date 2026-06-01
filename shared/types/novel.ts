@@ -180,6 +180,10 @@ export interface Novel {
   secondaryStoryModeId?: string | null;
   worldId?: string | null;
   tokenUsage?: TaskTokenUsageSummary | null;
+  user?: {
+    id: string;
+    username: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }

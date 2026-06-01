@@ -43,6 +43,7 @@ export type NovelListItem = Pick<
   | "secondaryStoryModeId"
   | "worldId"
   | "tokenUsage"
+  | "user"
   | "createdAt"
   | "updatedAt"
 > & {

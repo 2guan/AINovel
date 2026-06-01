@@ -1,4 +1,4 @@
-﻿import type { KeyboardEvent, MouseEvent } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import type { ProjectProgressStatus } from "@ai-novel/shared/types/novel";
 import type { DirectorContinuationMode } from "@ai-novel/shared/types/novelDirector";
@@ -393,6 +393,12 @@ export default function NovelList() {
                       {novel.title}
                     </CardTitle>
                     <div className="flex flex-wrap items-center justify-end gap-2">
+                      {novel.user ? (
+                        <Badge variant="outline" className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20 gap-1 font-normal py-0.5">
+                          <span className="opacity-70">作者:</span>
+                          <span className="font-semibold">{novel.user.username}</span>
+                        </Badge>
+                      ) : null}
                       <Badge variant={novel.status === "published" ? "default" : "secondary"}>
                         {novel.status === "published" ? "已发布" : "草稿"}
                       </Badge>
