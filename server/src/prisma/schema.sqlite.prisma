@@ -1555,6 +1555,7 @@ model ConsistencyFact {
 
 model GenerationJob {
   id             String            @id @default(cuid())
+  userId         String            @default("admin")
   novelId        String
   startOrder     Int
   endOrder       Int
@@ -1592,10 +1593,12 @@ model GenerationJob {
 
   @@index([novelId])
   @@index([novelId, status])
+  @@index([userId, updatedAt])
 }
 
 model AgentRun {
   id           String         @id @default(cuid())
+  userId       String         @default("admin")
   novelId      String?
   chapterId    String?
   sessionId    String
@@ -1618,6 +1621,7 @@ model AgentRun {
   @@index([novelId, createdAt])
   @@index([novelId, chapterId, createdAt])
   @@index([sessionId, createdAt])
+  @@index([userId, updatedAt])
 }
 
 model AgentStep {
@@ -1849,6 +1853,7 @@ model BookContract {
 
 model NovelWorkflowTask {
   id                 String                  @id @default(cuid())
+  userId             String                  @default("admin")
   novelId            String?
   lane               NovelWorkflowLane
   title              String
@@ -1889,6 +1894,7 @@ model NovelWorkflowTask {
   @@index([novelId, status, updatedAt])
   @@index([status, updatedAt])
   @@index([lane, updatedAt])
+  @@index([userId, updatedAt])
 }
 
 model DirectorRunCommand {
@@ -2832,6 +2838,7 @@ model KnowledgeChunk {
 
 model RagIndexJob {
   id          String       @id @default(cuid())
+  userId      String       @default("admin")
   tenantId    String       @default("default")
   jobType     RagJobType
   ownerType   RagOwnerType
@@ -2847,6 +2854,7 @@ model RagIndexJob {
 
   @@index([status, runAfter])
   @@index([tenantId, ownerType, ownerId])
+  @@index([userId, updatedAt])
 }
 
 model NovelSideEffectJob {
