@@ -1,4 +1,7 @@
-import { prisma } from "../../db/prisma";
+import {
+  findScopedAppSettings,
+  scopedAppSettingUpsert,
+} from "./appSettingScope";
 
 const BASE_URL_KEY = "autoDirector.baseUrl";
 const DINGTALK_WEBHOOK_KEY = "autoDirector.channels.dingtalk.webhookUrl";
@@ -149,14 +152,7 @@ function buildSettingsFromEntries(entries: Map<string, string>): AutoDirectorCha
 
 export async function getAutoDirectorChannelSettings(): Promise<AutoDirectorChannelSettings> {
   try {
-    const rows = await prisma.appSetting.findMany({
-      where: {
-        key: {
-          in: [...ALL_KEYS],
-        },
-      },
-    });
-    const entries = new Map(rows.map((item) => [item.key, item.value]));
+    const entries = await findScopedAppSettings(ALL_KEYS);
     return buildSettingsFromEntries(entries);
   } catch (error) {
     if (isMissingTableError(error) || isDbUnavailableError(error)) {
@@ -204,51 +200,15 @@ export async function saveAutoDirectorChannelSettings(
 
   try {
     await Promise.all([
-      prisma.appSetting.upsert({
-        where: { key: BASE_URL_KEY },
-        update: { value: next.baseUrl },
-        create: { key: BASE_URL_KEY, value: next.baseUrl },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: DINGTALK_WEBHOOK_KEY },
-        update: { value: next.dingtalk.webhookUrl },
-        create: { key: DINGTALK_WEBHOOK_KEY, value: next.dingtalk.webhookUrl },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: DINGTALK_CALLBACK_TOKEN_KEY },
-        update: { value: next.dingtalk.callbackToken },
-        create: { key: DINGTALK_CALLBACK_TOKEN_KEY, value: next.dingtalk.callbackToken },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: DINGTALK_OPERATOR_MAP_KEY },
-        update: { value: next.dingtalk.operatorMapJson },
-        create: { key: DINGTALK_OPERATOR_MAP_KEY, value: next.dingtalk.operatorMapJson },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: DINGTALK_EVENT_TYPES_KEY },
-        update: { value: stringifyEventTypes(next.dingtalk.eventTypes) },
-        create: { key: DINGTALK_EVENT_TYPES_KEY, value: stringifyEventTypes(next.dingtalk.eventTypes) },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: WECOM_WEBHOOK_KEY },
-        update: { value: next.wecom.webhookUrl },
-        create: { key: WECOM_WEBHOOK_KEY, value: next.wecom.webhookUrl },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: WECOM_CALLBACK_TOKEN_KEY },
-        update: { value: next.wecom.callbackToken },
-        create: { key: WECOM_CALLBACK_TOKEN_KEY, value: next.wecom.callbackToken },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: WECOM_OPERATOR_MAP_KEY },
-        update: { value: next.wecom.operatorMapJson },
-        create: { key: WECOM_OPERATOR_MAP_KEY, value: next.wecom.operatorMapJson },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: WECOM_EVENT_TYPES_KEY },
-        update: { value: stringifyEventTypes(next.wecom.eventTypes) },
-        create: { key: WECOM_EVENT_TYPES_KEY, value: stringifyEventTypes(next.wecom.eventTypes) },
-      }),
+      scopedAppSettingUpsert(BASE_URL_KEY, next.baseUrl),
+      scopedAppSettingUpsert(DINGTALK_WEBHOOK_KEY, next.dingtalk.webhookUrl),
+      scopedAppSettingUpsert(DINGTALK_CALLBACK_TOKEN_KEY, next.dingtalk.callbackToken),
+      scopedAppSettingUpsert(DINGTALK_OPERATOR_MAP_KEY, next.dingtalk.operatorMapJson),
+      scopedAppSettingUpsert(DINGTALK_EVENT_TYPES_KEY, stringifyEventTypes(next.dingtalk.eventTypes)),
+      scopedAppSettingUpsert(WECOM_WEBHOOK_KEY, next.wecom.webhookUrl),
+      scopedAppSettingUpsert(WECOM_CALLBACK_TOKEN_KEY, next.wecom.callbackToken),
+      scopedAppSettingUpsert(WECOM_OPERATOR_MAP_KEY, next.wecom.operatorMapJson),
+      scopedAppSettingUpsert(WECOM_EVENT_TYPES_KEY, stringifyEventTypes(next.wecom.eventTypes)),
     ]);
     return next;
   } catch (error) {

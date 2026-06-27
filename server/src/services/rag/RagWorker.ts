@@ -1,4 +1,5 @@
 import { ragConfig } from "../../config/rag";
+import { runWithAuthUser } from "../../auth/authContext";
 import { RagIndexService, RagJobCancelledError } from "./RagIndexService";
 
 function backoffMs(attempt: number): number {
@@ -102,18 +103,36 @@ export class RagWorker {
         attempt: nextAttempt,
         maxAttempts: job.maxAttempts,
       });
-      await this.ragIndexService.updateJobStatus(job.id, {
-        status: "running",
-        attempts: nextAttempt,
-        lastError: null,
-      });
+      const owner = await this.ragIndexService.resolveJobOwner(job);
 
       try {
-        const result = await this.ragIndexService.processJob(job);
-        await this.ragIndexService.updateJobStatus(job.id, {
-          status: "succeeded",
-          lastError: null,
-        });
+        const result = owner
+          ? await runWithAuthUser(owner, async () => {
+            await this.ragIndexService.updateJobStatus(job.id, {
+              status: "running",
+              attempts: nextAttempt,
+              lastError: null,
+            });
+            const processed = await this.ragIndexService.processJob(job);
+            await this.ragIndexService.updateJobStatus(job.id, {
+              status: "succeeded",
+              lastError: null,
+            });
+            return processed;
+          })
+          : await (async () => {
+            await this.ragIndexService.updateJobStatus(job.id, {
+              status: "running",
+              attempts: nextAttempt,
+              lastError: null,
+            });
+            const processed = await this.ragIndexService.processJob(job);
+            await this.ragIndexService.updateJobStatus(job.id, {
+              status: "succeeded",
+              lastError: null,
+            });
+            return processed;
+          })();
         this.logInfo("Job succeeded.", {
           jobId: job.id,
           chunks: result.chunks,
@@ -129,11 +148,19 @@ export class RagWorker {
         }
         const message = error instanceof Error ? error.message : "RAG 索引任务失败。";
         if (nextAttempt >= job.maxAttempts) {
-          await this.ragIndexService.updateJobStatus(job.id, {
-            status: "failed",
-            attempts: nextAttempt,
-            lastError: message,
-          });
+          if (owner) {
+            await runWithAuthUser(owner, () => this.ragIndexService.updateJobStatus(job.id, {
+              status: "failed",
+              attempts: nextAttempt,
+              lastError: message,
+            }));
+          } else {
+            await this.ragIndexService.updateJobStatus(job.id, {
+              status: "failed",
+              attempts: nextAttempt,
+              lastError: message,
+            });
+          }
           this.logWarn("Job failed permanently.", {
             jobId: job.id,
             attempt: nextAttempt,
@@ -144,12 +171,21 @@ export class RagWorker {
           return;
         }
         const delayMs = backoffMs(nextAttempt);
-        await this.ragIndexService.updateJobStatus(job.id, {
-          status: "queued",
-          attempts: nextAttempt,
-          runAfter: new Date(Date.now() + delayMs),
-          lastError: message,
-        });
+        if (owner) {
+          await runWithAuthUser(owner, () => this.ragIndexService.updateJobStatus(job.id, {
+            status: "queued",
+            attempts: nextAttempt,
+            runAfter: new Date(Date.now() + delayMs),
+            lastError: message,
+          }));
+        } else {
+          await this.ragIndexService.updateJobStatus(job.id, {
+            status: "queued",
+            attempts: nextAttempt,
+            runAfter: new Date(Date.now() + delayMs),
+            lastError: message,
+          });
+        }
         this.logWarn("Job failed and requeued.", {
           jobId: job.id,
           attempt: nextAttempt,

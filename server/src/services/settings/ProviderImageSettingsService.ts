@@ -1,5 +1,10 @@
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
-import { prisma } from "../../db/prisma";
+import {
+  findScopedAppSetting,
+  findScopedAppSettings,
+  scopedAppSettingDeleteMany,
+  scopedAppSettingUpsert,
+} from "./appSettingScope";
 
 export type ImageModelProvider = "openai" | "siliconflow" | "grok";
 
@@ -77,9 +82,7 @@ export async function getProviderImageModel(provider: LLMProvider): Promise<stri
   }
 
   try {
-    const record = await prisma.appSetting.findUnique({
-      where: { key },
-    });
+    const record = await findScopedAppSetting(key);
     return normalizeOptionalText(record?.value)
       ?? getProviderEnvImageModel(provider)
       ?? getDefaultImageModel(provider);
@@ -108,14 +111,7 @@ export async function getProviderImageModelMap(
     .filter((value): value is string => Boolean(value));
 
   try {
-    const records = await prisma.appSetting.findMany({
-      where: {
-        key: {
-          in: keys,
-        },
-      },
-    });
-    const valueMap = new Map(records.map((item) => [item.key, normalizeOptionalText(item.value)]));
+    const valueMap = await findScopedAppSettings(keys);
     for (const provider of supportedProviders) {
       const key = getImageModelSettingKey(provider);
       if (!key) {
@@ -123,7 +119,7 @@ export async function getProviderImageModelMap(
       }
       result.set(
         provider,
-        valueMap.get(key)
+          normalizeOptionalText(valueMap.get(key))
           ?? getProviderEnvImageModel(provider)
           ?? getDefaultImageModel(provider),
       );
@@ -153,17 +149,11 @@ export async function saveProviderImageModel(
 
   try {
     if (!normalized) {
-      await prisma.appSetting.deleteMany({
-        where: { key },
-      });
+      await scopedAppSettingDeleteMany(key);
       return getProviderEnvImageModel(provider) ?? getDefaultImageModel(provider);
     }
 
-    await prisma.appSetting.upsert({
-      where: { key },
-      update: { value: normalized },
-      create: { key, value: normalized },
-    });
+    await scopedAppSettingUpsert(key, normalized);
     return normalized;
   } catch (error) {
     if (isMissingTableError(error)) {

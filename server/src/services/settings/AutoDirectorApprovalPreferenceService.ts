@@ -5,7 +5,10 @@ import {
   normalizeDirectorAutoApprovalPointCodes,
   type DirectorAutoApprovalPreferenceSettings,
 } from "@ai-novel/shared/types/autoDirectorApproval";
-import { prisma } from "../../db/prisma";
+import {
+  findScopedAppSettings,
+  scopedAppSettingUpsert,
+} from "./appSettingScope";
 
 const APPROVAL_POINT_CODES_KEY = "autoDirector.approvalPreference.approvalPointCodes";
 const ALL_KEYS = [APPROVAL_POINT_CODES_KEY] as const;
@@ -52,15 +55,9 @@ function buildSettings(approvalPointCodes: readonly string[] | null | undefined)
 
 export async function getAutoDirectorApprovalPreferenceSettings(): Promise<DirectorAutoApprovalPreferenceSettings> {
   try {
-    const rows = await prisma.appSetting.findMany({
-      where: {
-        key: {
-          in: [...ALL_KEYS],
-        },
-      },
-    });
-    const row = rows.find((item) => item.key === APPROVAL_POINT_CODES_KEY);
-    return buildSettings(parsePointCodes(row?.value, Boolean(row)));
+    const valueMap = await findScopedAppSettings(ALL_KEYS);
+    const value = valueMap.get(APPROVAL_POINT_CODES_KEY);
+    return buildSettings(parsePointCodes(value, value !== undefined));
   } catch (error) {
     if (isMissingTableError(error) || isDbUnavailableError(error)) {
       return buildSettings(DEFAULT_DIRECTOR_AUTO_APPROVAL_POINT_CODES);
@@ -74,11 +71,7 @@ export async function saveAutoDirectorApprovalPreferenceSettings(input: {
 }): Promise<DirectorAutoApprovalPreferenceSettings> {
   const nextCodes = normalizeDirectorAutoApprovalPointCodes(input.approvalPointCodes, []);
   try {
-    await prisma.appSetting.upsert({
-      where: { key: APPROVAL_POINT_CODES_KEY },
-      update: { value: stringifyPointCodes(nextCodes) },
-      create: { key: APPROVAL_POINT_CODES_KEY, value: stringifyPointCodes(nextCodes) },
-    });
+    await scopedAppSettingUpsert(APPROVAL_POINT_CODES_KEY, stringifyPointCodes(nextCodes));
   } catch (error) {
     if (isMissingTableError(error) || isDbUnavailableError(error)) {
       return buildSettings(nextCodes);

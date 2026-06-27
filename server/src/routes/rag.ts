@@ -6,6 +6,12 @@ import { AppError } from "../middleware/errorHandler";
 import { validate } from "../middleware/validate";
 import { ragServices } from "../services/rag";
 import { ragConfig } from "../config/rag";
+import {
+  getRagEmbeddingSettings,
+} from "../services/settings/RagSettingsService";
+import {
+  getRagRuntimeSettings,
+} from "../services/settings/RagRuntimeSettingsService";
 
 const router = Router();
 
@@ -95,6 +101,8 @@ router.delete("/jobs/:jobId", validate({ params: jobParamsSchema }), async (req,
 
 router.get("/health", async (_req, res, next) => {
   try {
+    await getRagRuntimeSettings();
+    await getRagEmbeddingSettings();
     const [embedding, qdrant] = await Promise.all([
       ragServices.embeddingService.healthCheck(),
       ragServices.vectorStoreService.healthCheck(),

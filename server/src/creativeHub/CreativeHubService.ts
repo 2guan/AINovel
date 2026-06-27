@@ -149,6 +149,16 @@ async function loadFailureDiagnostic(runId: string | null | undefined): Promise<
 }
 
 export class CreativeHubService {
+  private async ensureThreadVisible(threadId: string): Promise<void> {
+    const thread = await prisma.creativeHubThread.findUnique({
+      where: { id: threadId },
+      select: { id: true },
+    });
+    if (!thread) {
+      throw new Error("线程不存在。");
+    }
+  }
+
   async listThreads(options?: { includeArchived?: boolean }): Promise<CreativeHubThread[]> {
     const records = await prisma.creativeHubThread.findMany({
       where: options?.includeArchived ? undefined : { archived: false },
@@ -229,6 +239,7 @@ export class CreativeHubService {
   }
 
   async getThreadHistory(threadId: string): Promise<CreativeHubThreadHistoryItem[]> {
+    await this.ensureThreadVisible(threadId);
     const records = await prisma.creativeHubCheckpoint.findMany({
       where: { threadId },
       orderBy: { createdAt: "desc" },
@@ -237,6 +248,7 @@ export class CreativeHubService {
   }
 
   async getCheckpointHistoryItem(threadId: string, checkpointId: string): Promise<CreativeHubThreadHistoryItem | null> {
+    await this.ensureThreadVisible(threadId);
     const record = await prisma.creativeHubCheckpoint.findFirst({
       where: {
         threadId,

@@ -4,6 +4,7 @@ import { compactSnippet, normalizeRagText, toKeywordTerms } from "./utils";
 import { EmbeddingService } from "./EmbeddingService";
 import { VectorStoreService } from "./VectorStoreService";
 import { resolveKnowledgeDocumentIds } from "../knowledge/common";
+import { getRagRuntimeSettings } from "../settings/RagRuntimeSettingsService";
 import { RAG_OWNER_TYPES, type RagOwnerType, type RagSearchOptions, type RetrievedChunk } from "./types";
 
 const RRF_K = 60;
@@ -167,7 +168,8 @@ export class HybridRetrievalService {
   }
 
   async retrieve(query: string, options: RagSearchOptions = {}): Promise<RetrievedChunk[]> {
-    if (!ragConfig.enabled) {
+    const runtimeSettings = await getRagRuntimeSettings();
+    if (!runtimeSettings.enabled) {
       return [];
     }
     const normalizedQuery = normalizeRagText(query);
@@ -175,7 +177,7 @@ export class HybridRetrievalService {
       return [];
     }
     const tenantId = options.tenantId ?? ragConfig.defaultTenantId;
-    const finalTopK = options.finalTopK ?? ragConfig.finalTopK;
+    const finalTopK = options.finalTopK ?? runtimeSettings.finalTopK;
     const filteredBaseOwnerTypes = (options.ownerTypes ?? NON_KNOWLEDGE_OWNER_TYPES)
       .filter((item) => item !== "knowledge_document");
     const baseOwnerTypes = options.ownerTypes
@@ -199,16 +201,16 @@ export class HybridRetrievalService {
         novelId: options.novelId,
         worldId: options.worldId,
         ownerTypes: baseOwnerTypes,
-        vectorCandidates: options.vectorCandidates,
-        keywordCandidates: options.keywordCandidates,
+        vectorCandidates: options.vectorCandidates ?? runtimeSettings.vectorCandidates,
+        keywordCandidates: options.keywordCandidates ?? runtimeSettings.keywordCandidates,
       };
     const knowledgeScope: SearchScopeOptions | null = knowledgeDocumentIds.length > 0
       ? {
         tenantId,
         ownerTypes: ["knowledge_document"],
         ownerIds: knowledgeDocumentIds,
-        vectorCandidates: options.vectorCandidates,
-        keywordCandidates: options.keywordCandidates,
+        vectorCandidates: options.vectorCandidates ?? runtimeSettings.vectorCandidates,
+        keywordCandidates: options.keywordCandidates ?? runtimeSettings.keywordCandidates,
       }
       : null;
 

@@ -9,6 +9,7 @@ import {
   type ImageGenerationTask,
 } from "@ai-novel/shared/types/image";
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
+import { runWithUserIdContext } from "../../auth/runWithUserContext";
 import { prisma } from "../../db/prisma";
 import { AppError } from "../../middleware/errorHandler";
 import {
@@ -481,7 +482,11 @@ export class ImageGenerationService {
           continue;
         }
         this.queueSet.delete(taskId);
-        await this.executeTask(taskId);
+        const owner = await prisma.imageGenerationTask.findUnique({
+          where: { id: taskId },
+          select: { userId: true },
+        });
+        await runWithUserIdContext(owner?.userId, () => this.executeTask(taskId));
       }
     } finally {
       this.processing = false;

@@ -5,6 +5,7 @@ import type {
 } from "@ai-novel/shared/types/bookAnalysis";
 import { BOOK_ANALYSIS_SECTIONS } from "@ai-novel/shared/types/bookAnalysis";
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
+import { runWithUserIdContext } from "../../auth/runWithUserContext";
 import { prisma } from "../../db/prisma";
 import { AppError } from "../../middleware/errorHandler";
 import { getBookAnalysisMaxConcurrentTasks } from "./bookAnalysis.config";
@@ -29,12 +30,18 @@ export class BookAnalysisCommandService {
   private readonly taskQueue = new BookAnalysisTaskQueue({
     getMaxConcurrentTasks: getBookAnalysisMaxConcurrentTasks,
     onRunTask: async (task) => {
-      await this.queryService.ensureAnalysisSections(task.analysisId);
-      if (task.kind === "full") {
-        await this.generationService.runFullAnalysis(task.analysisId);
-        return;
-      }
-      await this.generationService.runSingleSection(task.analysisId, task.sectionKey);
+      const owner = await prisma.bookAnalysis.findUnique({
+        where: { id: task.analysisId },
+        select: { userId: true },
+      });
+      await runWithUserIdContext(owner?.userId, async () => {
+        await this.queryService.ensureAnalysisSections(task.analysisId);
+        if (task.kind === "full") {
+          await this.generationService.runFullAnalysis(task.analysisId);
+          return;
+        }
+        await this.generationService.runSingleSection(task.analysisId, task.sectionKey);
+      });
     },
   });
   private readonly watchdogService = new BookAnalysisWatchdogService((analysisId) => {
@@ -341,6 +348,7 @@ export class BookAnalysisCommandService {
   }
 
   async regenerateSection(analysisId: string, sectionKey: BookAnalysisSectionKey): Promise<BookAnalysisDetail> {
+    await this.ensureAnalysisVisible(analysisId);
     const section = await prisma.bookAnalysisSection.findFirst({
       where: {
         analysisId,
@@ -398,6 +406,7 @@ export class BookAnalysisCommandService {
     sectionKey: BookAnalysisSectionKey,
     input: { currentDraft: string; instruction: string },
   ): Promise<{ optimizedDraft: string }> {
+    await this.ensureAnalysisVisible(analysisId);
     const optimizedDraft = await this.generationService.optimizeSectionPreview({
       analysisId,
       sectionKey,
@@ -416,6 +425,7 @@ export class BookAnalysisCommandService {
       frozen?: boolean;
     },
   ): Promise<BookAnalysisDetail> {
+    await this.ensureAnalysisVisible(analysisId);
     const section = await prisma.bookAnalysisSection.findFirst({
       where: {
         analysisId,
@@ -477,6 +487,16 @@ export class BookAnalysisCommandService {
       throw new AppError("Book analysis not found after status update.", 500);
     }
     return detail;
+  }
+
+  private async ensureAnalysisVisible(analysisId: string): Promise<void> {
+    const analysis = await prisma.bookAnalysis.findUnique({
+      where: { id: analysisId },
+      select: { id: true },
+    });
+    if (!analysis) {
+      throw new AppError("Book analysis not found.", 404);
+    }
   }
 
   private enqueueTask(task: { analysisId: string; kind: "full" } | { analysisId: string; kind: "section"; sectionKey: BookAnalysisSectionKey }): void {

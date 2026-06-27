@@ -1,4 +1,3 @@
-import { prisma } from "../../db/prisma";
 import { type EmbeddingProvider } from "../../config/rag";
 import { getProviderModels } from "../../llm/modelCatalog";
 import {
@@ -9,6 +8,7 @@ import {
   providerRequiresApiKey,
   PROVIDERS,
 } from "../../llm/providers";
+import { secretStore } from "./secretStore";
 
 interface ProviderSecret {
   apiKey?: string;
@@ -96,9 +96,7 @@ function getProviderDisplayName(provider: EmbeddingProvider, displayName?: strin
 
 async function resolveProviderSecret(provider: EmbeddingProvider): Promise<ProviderSecret> {
   try {
-    const record = await prisma.aPIKey.findFirst({
-      where: { provider },
-    });
+    const record = await secretStore.getProvider(provider);
     const dbApiKey = record?.isActive ? record.key?.trim() : undefined;
     const dbBaseURL = record?.isActive ? record.baseURL?.trim() : undefined;
     const dbModel = record?.isActive ? record.model?.trim() : undefined;

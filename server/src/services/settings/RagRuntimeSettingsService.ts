@@ -18,6 +18,11 @@ import {
   WORKER_POLL_MS_KEY,
   WORKER_RETRY_BASE_MS_KEY,
 } from "./ragSettingKeys";
+import {
+  findScopedAppSettings,
+  scopedAppSettingDeleteMany,
+  scopedAppSettingUpsert,
+} from "./appSettingScope";
 
 const INITIAL_RAG_RUNTIME_DEFAULTS = {
   enabled: ragConfig.enabled,
@@ -143,14 +148,7 @@ function getDefaultSettings(): RagRuntimeSettings {
 }
 
 async function getValueMap(): Promise<Map<string, string>> {
-  const records = await prisma.appSetting.findMany({
-    where: {
-      key: {
-        in: [...RAG_RUNTIME_SETTING_KEYS],
-      },
-    },
-  });
-  return new Map(records.map((item) => [item.key, item.value]));
+  return findScopedAppSettings(RAG_RUNTIME_SETTING_KEYS);
 }
 
 export async function getRagRuntimeSettings(): Promise<RagRuntimeSettings> {
@@ -258,85 +256,27 @@ export async function saveRagRuntimeSettings(
     || previous.chunkOverlap !== settings.chunkOverlap;
 
   const writeOperations = [
-    prisma.appSetting.upsert({
-      where: { key: RAG_ENABLED_KEY },
-      update: { value: String(settings.enabled) },
-      create: { key: RAG_ENABLED_KEY, value: String(settings.enabled) },
-    }),
-    prisma.appSetting.upsert({
-      where: { key: QDRANT_URL_KEY },
-      update: { value: settings.qdrantUrl },
-      create: { key: QDRANT_URL_KEY, value: settings.qdrantUrl },
-    }),
-    prisma.appSetting.upsert({
-      where: { key: QDRANT_TIMEOUT_MS_KEY },
-      update: { value: String(settings.qdrantTimeoutMs) },
-      create: { key: QDRANT_TIMEOUT_MS_KEY, value: String(settings.qdrantTimeoutMs) },
-    }),
-    prisma.appSetting.upsert({
-      where: { key: QDRANT_UPSERT_MAX_BYTES_KEY },
-      update: { value: String(settings.qdrantUpsertMaxBytes) },
-      create: { key: QDRANT_UPSERT_MAX_BYTES_KEY, value: String(settings.qdrantUpsertMaxBytes) },
-    }),
-    prisma.appSetting.upsert({
-      where: { key: CHUNK_SIZE_KEY },
-      update: { value: String(settings.chunkSize) },
-      create: { key: CHUNK_SIZE_KEY, value: String(settings.chunkSize) },
-    }),
-    prisma.appSetting.upsert({
-      where: { key: CHUNK_OVERLAP_KEY },
-      update: { value: String(settings.chunkOverlap) },
-      create: { key: CHUNK_OVERLAP_KEY, value: String(settings.chunkOverlap) },
-    }),
-    prisma.appSetting.upsert({
-      where: { key: VECTOR_CANDIDATES_KEY },
-      update: { value: String(settings.vectorCandidates) },
-      create: { key: VECTOR_CANDIDATES_KEY, value: String(settings.vectorCandidates) },
-    }),
-    prisma.appSetting.upsert({
-      where: { key: KEYWORD_CANDIDATES_KEY },
-      update: { value: String(settings.keywordCandidates) },
-      create: { key: KEYWORD_CANDIDATES_KEY, value: String(settings.keywordCandidates) },
-    }),
-    prisma.appSetting.upsert({
-      where: { key: FINAL_TOP_K_KEY },
-      update: { value: String(settings.finalTopK) },
-      create: { key: FINAL_TOP_K_KEY, value: String(settings.finalTopK) },
-    }),
-    prisma.appSetting.upsert({
-      where: { key: WORKER_POLL_MS_KEY },
-      update: { value: String(settings.workerPollMs) },
-      create: { key: WORKER_POLL_MS_KEY, value: String(settings.workerPollMs) },
-    }),
-    prisma.appSetting.upsert({
-      where: { key: WORKER_MAX_ATTEMPTS_KEY },
-      update: { value: String(settings.workerMaxAttempts) },
-      create: { key: WORKER_MAX_ATTEMPTS_KEY, value: String(settings.workerMaxAttempts) },
-    }),
-    prisma.appSetting.upsert({
-      where: { key: WORKER_RETRY_BASE_MS_KEY },
-      update: { value: String(settings.workerRetryBaseMs) },
-      create: { key: WORKER_RETRY_BASE_MS_KEY, value: String(settings.workerRetryBaseMs) },
-    }),
-    prisma.appSetting.upsert({
-      where: { key: HTTP_TIMEOUT_MS_KEY },
-      update: { value: String(settings.httpTimeoutMs) },
-      create: { key: HTTP_TIMEOUT_MS_KEY, value: String(settings.httpTimeoutMs) },
-    }),
+    scopedAppSettingUpsert(RAG_ENABLED_KEY, String(settings.enabled)),
+    scopedAppSettingUpsert(QDRANT_URL_KEY, settings.qdrantUrl),
+    scopedAppSettingUpsert(QDRANT_TIMEOUT_MS_KEY, String(settings.qdrantTimeoutMs)),
+    scopedAppSettingUpsert(QDRANT_UPSERT_MAX_BYTES_KEY, String(settings.qdrantUpsertMaxBytes)),
+    scopedAppSettingUpsert(CHUNK_SIZE_KEY, String(settings.chunkSize)),
+    scopedAppSettingUpsert(CHUNK_OVERLAP_KEY, String(settings.chunkOverlap)),
+    scopedAppSettingUpsert(VECTOR_CANDIDATES_KEY, String(settings.vectorCandidates)),
+    scopedAppSettingUpsert(KEYWORD_CANDIDATES_KEY, String(settings.keywordCandidates)),
+    scopedAppSettingUpsert(FINAL_TOP_K_KEY, String(settings.finalTopK)),
+    scopedAppSettingUpsert(WORKER_POLL_MS_KEY, String(settings.workerPollMs)),
+    scopedAppSettingUpsert(WORKER_MAX_ATTEMPTS_KEY, String(settings.workerMaxAttempts)),
+    scopedAppSettingUpsert(WORKER_RETRY_BASE_MS_KEY, String(settings.workerRetryBaseMs)),
+    scopedAppSettingUpsert(HTTP_TIMEOUT_MS_KEY, String(settings.httpTimeoutMs)),
   ];
 
   try {
     await prisma.$transaction([
       ...writeOperations,
       ...(qdrantApiKey
-        ? [prisma.appSetting.upsert({
-          where: { key: QDRANT_API_KEY_KEY },
-          update: { value: qdrantApiKey },
-          create: { key: QDRANT_API_KEY_KEY, value: qdrantApiKey },
-        })]
-        : [prisma.appSetting.deleteMany({
-          where: { key: QDRANT_API_KEY_KEY },
-        })]),
+        ? [scopedAppSettingUpsert(QDRANT_API_KEY_KEY, qdrantApiKey)]
+        : [scopedAppSettingDeleteMany(QDRANT_API_KEY_KEY)]),
     ]);
   } catch (error) {
     if (!isMissingTableError(error)) {

@@ -1,5 +1,8 @@
-import { prisma } from "../../db/prisma";
 import { isMissingTableError } from "./ragLegacyCompatibility";
+import {
+  findScopedAppSetting,
+  scopedAppSettingUpsert,
+} from "./appSettingScope";
 
 export const STYLE_EXTRACTION_TIMEOUT_MS_KEY = "styleEngine.styleExtractionTimeoutMs";
 
@@ -61,9 +64,7 @@ function buildSettings(styleExtractionTimeoutMs: number): StyleEngineRuntimeSett
 export async function getStyleEngineRuntimeSettings(): Promise<StyleEngineRuntimeSettings> {
   const fallback = getDefaultStyleExtractionTimeoutMs();
   try {
-    const record = await prisma.appSetting.findUnique({
-      where: { key: STYLE_EXTRACTION_TIMEOUT_MS_KEY },
-    });
+    const record = await findScopedAppSetting(STYLE_EXTRACTION_TIMEOUT_MS_KEY);
     return buildSettings(parseTimeoutMs(
       record?.value,
       fallback,
@@ -90,14 +91,7 @@ export async function saveStyleEngineRuntimeSettings(
   ));
 
   try {
-    await prisma.appSetting.upsert({
-      where: { key: STYLE_EXTRACTION_TIMEOUT_MS_KEY },
-      update: { value: String(settings.styleExtractionTimeoutMs) },
-      create: {
-        key: STYLE_EXTRACTION_TIMEOUT_MS_KEY,
-        value: String(settings.styleExtractionTimeoutMs),
-      },
-    });
+    await scopedAppSettingUpsert(STYLE_EXTRACTION_TIMEOUT_MS_KEY, String(settings.styleExtractionTimeoutMs));
   } catch (error) {
     if (!isMissingTableError(error)) {
       throw error;

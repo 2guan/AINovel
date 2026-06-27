@@ -430,6 +430,13 @@ export class StyleProfileService {
     name: string;
   } & LlmInput): Promise<StyleProfile> {
     await ensureStyleEngineSeedData();
+    const analysis = await prisma.bookAnalysis.findUnique({
+      where: { id: input.bookAnalysisId },
+      select: { id: true },
+    });
+    if (!analysis) {
+      throw new Error("未找到可用于生成写法的拆书文风与技法小节。");
+    }
     const section = await prisma.bookAnalysisSection.findFirst({
       where: {
         analysisId: input.bookAnalysisId,

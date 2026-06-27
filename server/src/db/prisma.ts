@@ -39,8 +39,6 @@ const USER_OWNED_MODELS = new Set([
   "WritingFormula",
   "StyleProfile",
   "TitleLibrary",
-  "APIKey",
-  "ModelRouteConfig",
   "GenerationJob",
   "AgentRun",
   "CreativeHubThread",

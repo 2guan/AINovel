@@ -27,6 +27,11 @@ import {
   RAG_EMBEDDING_SETTING_KEYS,
   RAG_EMBEDDING_TIMEOUT_MS_KEY,
 } from "./ragSettingKeys";
+import {
+  findScopedAppSettings,
+  scopedAppSettingUpsert,
+} from "./appSettingScope";
+import { secretStore } from "./secretStore";
 
 export type RagEmbeddingCollectionMode = "auto" | "manual";
 
@@ -191,14 +196,7 @@ async function getDefaultSettings(): Promise<RagEmbeddingSettings> {
 
 export async function getRagEmbeddingSettings(): Promise<RagEmbeddingSettings> {
   try {
-    const records = await prisma.appSetting.findMany({
-      where: {
-        key: {
-          in: [...RAG_EMBEDDING_SETTING_KEYS],
-        },
-      },
-    });
-    const valueMap = new Map(records.map((item) => [item.key, item.value]));
+    const valueMap = await findScopedAppSettings(RAG_EMBEDDING_SETTING_KEYS);
     const defaults = await getDefaultSettings();
     const embeddingProvider = asEmbeddingProvider(valueMap.get(RAG_EMBEDDING_PROVIDER_KEY) ?? defaults.embeddingProvider);
     const embeddingModel = normalizeEmbeddingModel(
@@ -303,56 +301,16 @@ export async function saveRagEmbeddingSettings(input: RagEmbeddingSettingsInput)
   };
   try {
     await prisma.$transaction([
-      prisma.appSetting.upsert({
-        where: { key: RAG_EMBEDDING_PROVIDER_KEY },
-        update: { value: data.embeddingProvider },
-        create: { key: RAG_EMBEDDING_PROVIDER_KEY, value: data.embeddingProvider },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: RAG_EMBEDDING_MODEL_KEY },
-        update: { value: data.embeddingModel },
-        create: { key: RAG_EMBEDDING_MODEL_KEY, value: data.embeddingModel },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: RAG_EMBEDDING_COLLECTION_MODE_KEY },
-        update: { value: data.collectionMode },
-        create: { key: RAG_EMBEDDING_COLLECTION_MODE_KEY, value: data.collectionMode },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: RAG_EMBEDDING_COLLECTION_NAME_KEY },
-        update: { value: data.collectionName },
-        create: { key: RAG_EMBEDDING_COLLECTION_NAME_KEY, value: data.collectionName },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: RAG_EMBEDDING_COLLECTION_TAG_KEY },
-        update: { value: data.collectionTag },
-        create: { key: RAG_EMBEDDING_COLLECTION_TAG_KEY, value: data.collectionTag },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: RAG_EMBEDDING_AUTO_REINDEX_KEY },
-        update: { value: String(data.autoReindexOnChange) },
-        create: { key: RAG_EMBEDDING_AUTO_REINDEX_KEY, value: String(data.autoReindexOnChange) },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: RAG_EMBEDDING_BATCH_SIZE_KEY },
-        update: { value: String(data.embeddingBatchSize) },
-        create: { key: RAG_EMBEDDING_BATCH_SIZE_KEY, value: String(data.embeddingBatchSize) },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: RAG_EMBEDDING_TIMEOUT_MS_KEY },
-        update: { value: String(data.embeddingTimeoutMs) },
-        create: { key: RAG_EMBEDDING_TIMEOUT_MS_KEY, value: String(data.embeddingTimeoutMs) },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: RAG_EMBEDDING_MAX_RETRIES_KEY },
-        update: { value: String(data.embeddingMaxRetries) },
-        create: { key: RAG_EMBEDDING_MAX_RETRIES_KEY, value: String(data.embeddingMaxRetries) },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: RAG_EMBEDDING_RETRY_BASE_MS_KEY },
-        update: { value: String(data.embeddingRetryBaseMs) },
-        create: { key: RAG_EMBEDDING_RETRY_BASE_MS_KEY, value: String(data.embeddingRetryBaseMs) },
-      }),
+      scopedAppSettingUpsert(RAG_EMBEDDING_PROVIDER_KEY, data.embeddingProvider),
+      scopedAppSettingUpsert(RAG_EMBEDDING_MODEL_KEY, data.embeddingModel),
+      scopedAppSettingUpsert(RAG_EMBEDDING_COLLECTION_MODE_KEY, data.collectionMode),
+      scopedAppSettingUpsert(RAG_EMBEDDING_COLLECTION_NAME_KEY, data.collectionName),
+      scopedAppSettingUpsert(RAG_EMBEDDING_COLLECTION_TAG_KEY, data.collectionTag),
+      scopedAppSettingUpsert(RAG_EMBEDDING_AUTO_REINDEX_KEY, String(data.autoReindexOnChange)),
+      scopedAppSettingUpsert(RAG_EMBEDDING_BATCH_SIZE_KEY, String(data.embeddingBatchSize)),
+      scopedAppSettingUpsert(RAG_EMBEDDING_TIMEOUT_MS_KEY, String(data.embeddingTimeoutMs)),
+      scopedAppSettingUpsert(RAG_EMBEDDING_MAX_RETRIES_KEY, String(data.embeddingMaxRetries)),
+      scopedAppSettingUpsert(RAG_EMBEDDING_RETRY_BASE_MS_KEY, String(data.embeddingRetryBaseMs)),
     ]);
     return {
       settings,
@@ -378,15 +336,7 @@ export async function saveRagEmbeddingSettings(input: RagEmbeddingSettingsInput)
 export async function getRagEmbeddingProviders(): Promise<RagEmbeddingProviderStatus[]> {
   const builtInProviders = [...SUPPORTED_PROVIDERS];
   try {
-    const items = await prisma.aPIKey.findMany({
-      select: {
-        provider: true,
-        displayName: true,
-        key: true,
-        baseURL: true,
-        isActive: true,
-      },
-    });
+    const items = await secretStore.listProviders();
     const itemMap = new Map(items.map((item) => [item.provider, item]));
     const providers = uniqueProviders([
       ...builtInProviders,

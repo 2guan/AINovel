@@ -1,7 +1,6 @@
 import { Router } from "express";
 import type { ApiResponse } from "@ai-novel/shared/types/api";
 import { z } from "zod";
-import { prisma } from "../db/prisma";
 import { llmConnectivityService } from "../llm/connectivity";
 import { getStructuredFallbackSettings, saveStructuredFallbackSettings } from "../llm/structuredFallbackSettings";
 import { getProviderModels } from "../llm/modelCatalog";
@@ -11,6 +10,7 @@ import { getProviderEnvApiKey, getProviderEnvModel, isBuiltInProvider, PROVIDERS
 import { authMiddleware } from "../middleware/auth";
 import { AppError } from "../middleware/errorHandler";
 import { validate } from "../middleware/validate";
+import { secretStore } from "../services/settings/secretStore";
 
 const router = Router();
 
@@ -34,9 +34,7 @@ router.use(authMiddleware);
 
 router.get("/providers", async (_req, res, next) => {
   try {
-    const keys = await prisma.aPIKey.findMany({
-      orderBy: [{ createdAt: "asc" }],
-    });
+    const keys = await secretStore.listProviders();
     const keyMap = new Map(keys.map((item) => [item.provider, item]));
 
     const builtInEntries = await Promise.all(

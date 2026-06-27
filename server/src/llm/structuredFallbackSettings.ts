@@ -1,5 +1,10 @@
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
+import { getCurrentAuthUser } from "../auth/authContext";
 import { prisma } from "../db/prisma";
+import {
+  findScopedAppSettings,
+  scopedAppSettingUpsert,
+} from "../services/settings/appSettingScope";
 
 const STRUCTURED_FALLBACK_ENABLED_KEY = "structuredFallback.enabled";
 const STRUCTURED_FALLBACK_PROVIDER_KEY = "structuredFallback.provider";
@@ -15,7 +20,7 @@ const DEFAULT_STRUCTURED_FALLBACK_SETTINGS: StructuredFallbackSettings = {
   maxTokens: null,
 };
 
-let cachedSettings: StructuredFallbackSettings | null = null;
+const cachedSettings = new Map<string, StructuredFallbackSettings>();
 
 export interface StructuredFallbackSettings {
   enabled: boolean;
@@ -75,31 +80,36 @@ function buildSettingsFromEntries(entries: Map<string, string>): StructuredFallb
   };
 }
 
+function getStructuredFallbackCacheKey(): string {
+  const user = getCurrentAuthUser();
+  if (!user || user.role === "admin") {
+    return "admin";
+  }
+  return user.id;
+}
+
 export async function getStructuredFallbackSettings(forceRefresh = false): Promise<StructuredFallbackSettings> {
-  if (!forceRefresh && cachedSettings) {
-    return cachedSettings;
+  const cacheKey = getStructuredFallbackCacheKey();
+  const cached = cachedSettings.get(cacheKey);
+  if (!forceRefresh && cached) {
+    return cached;
   }
   try {
-    const rows = await prisma.appSetting.findMany({
-      where: {
-        key: {
-          in: [
-            STRUCTURED_FALLBACK_ENABLED_KEY,
-            STRUCTURED_FALLBACK_PROVIDER_KEY,
-            STRUCTURED_FALLBACK_MODEL_KEY,
-            STRUCTURED_FALLBACK_TEMPERATURE_KEY,
-            STRUCTURED_FALLBACK_MAX_TOKENS_KEY,
-          ],
-        },
-      },
-    });
-    const valueMap = new Map(rows.map((item) => [item.key, item.value]));
-    cachedSettings = buildSettingsFromEntries(valueMap);
-    return cachedSettings;
+    const valueMap = await findScopedAppSettings([
+      STRUCTURED_FALLBACK_ENABLED_KEY,
+      STRUCTURED_FALLBACK_PROVIDER_KEY,
+      STRUCTURED_FALLBACK_MODEL_KEY,
+      STRUCTURED_FALLBACK_TEMPERATURE_KEY,
+      STRUCTURED_FALLBACK_MAX_TOKENS_KEY,
+    ]);
+    const settings = buildSettingsFromEntries(valueMap);
+    cachedSettings.set(cacheKey, settings);
+    return settings;
   } catch (error) {
     if (isMissingTableError(error)) {
-      cachedSettings = { ...DEFAULT_STRUCTURED_FALLBACK_SETTINGS };
-      return cachedSettings;
+      const settings = { ...DEFAULT_STRUCTURED_FALLBACK_SETTINGS };
+      cachedSettings.set(cacheKey, settings);
+      return settings;
     }
     throw error;
   }
@@ -116,37 +126,17 @@ export async function saveStructuredFallbackSettings(input: Partial<StructuredFa
   };
   try {
     await prisma.$transaction([
-      prisma.appSetting.upsert({
-        where: { key: STRUCTURED_FALLBACK_ENABLED_KEY },
-        update: { value: String(next.enabled) },
-        create: { key: STRUCTURED_FALLBACK_ENABLED_KEY, value: String(next.enabled) },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: STRUCTURED_FALLBACK_PROVIDER_KEY },
-        update: { value: next.provider },
-        create: { key: STRUCTURED_FALLBACK_PROVIDER_KEY, value: next.provider },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: STRUCTURED_FALLBACK_MODEL_KEY },
-        update: { value: next.model },
-        create: { key: STRUCTURED_FALLBACK_MODEL_KEY, value: next.model },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: STRUCTURED_FALLBACK_TEMPERATURE_KEY },
-        update: { value: String(next.temperature) },
-        create: { key: STRUCTURED_FALLBACK_TEMPERATURE_KEY, value: String(next.temperature) },
-      }),
-      prisma.appSetting.upsert({
-        where: { key: STRUCTURED_FALLBACK_MAX_TOKENS_KEY },
-        update: { value: next.maxTokens == null ? "" : String(next.maxTokens) },
-        create: { key: STRUCTURED_FALLBACK_MAX_TOKENS_KEY, value: next.maxTokens == null ? "" : String(next.maxTokens) },
-      }),
+      scopedAppSettingUpsert(STRUCTURED_FALLBACK_ENABLED_KEY, String(next.enabled)),
+      scopedAppSettingUpsert(STRUCTURED_FALLBACK_PROVIDER_KEY, next.provider),
+      scopedAppSettingUpsert(STRUCTURED_FALLBACK_MODEL_KEY, next.model),
+      scopedAppSettingUpsert(STRUCTURED_FALLBACK_TEMPERATURE_KEY, String(next.temperature)),
+      scopedAppSettingUpsert(STRUCTURED_FALLBACK_MAX_TOKENS_KEY, next.maxTokens == null ? "" : String(next.maxTokens)),
     ]);
-    cachedSettings = next;
+    cachedSettings.set(getStructuredFallbackCacheKey(), next);
     return next;
   } catch (error) {
     if (isMissingTableError(error)) {
-      cachedSettings = next;
+      cachedSettings.set(getStructuredFallbackCacheKey(), next);
       return next;
     }
     throw error;

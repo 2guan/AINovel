@@ -2,7 +2,6 @@ import fs from "fs/promises";
 import path from "path";
 
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
-import { prisma } from "../../db/prisma";
 import { imageGenerationConfig } from "../../config/imageGeneration";
 import {
   getProviderDefaultBaseUrl,
@@ -15,6 +14,7 @@ import {
   getProviderImageModel,
   supportsImageModelSettings,
 } from "../settings/ProviderImageSettingsService";
+import { secretStore } from "../settings/secretStore";
 import type {
   ImageBackground,
   ImageModerationLevel,
@@ -58,9 +58,7 @@ async function resolveProviderSecret(provider: LLMProvider): Promise<ProviderSec
   let savedBaseURL: string | undefined;
 
   try {
-    const config = await prisma.aPIKey.findFirst({
-      where: { provider },
-    });
+    const config = await secretStore.getProvider(provider);
     if (config?.isActive) {
       savedApiKey = config.key?.trim() || undefined;
       savedBaseURL = config.baseURL?.trim() || undefined;

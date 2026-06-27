@@ -1,4 +1,3 @@
-import { prisma } from "../../db/prisma";
 import { ragConfig } from "../../config/rag";
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
 import {
@@ -8,6 +7,7 @@ import {
   PROVIDERS,
   resolveProviderBaseUrl,
 } from "../../llm/providers";
+import { secretStore } from "../settings/secretStore";
 import { normalizeRagText } from "./utils";
 import { getRagEmbeddingSettings } from "../settings/RagSettingsService";
 
@@ -117,7 +117,7 @@ export class EmbeddingService {
 
   private async resolveApiKey(provider: LLMProvider): Promise<string | undefined> {
     try {
-      const dbSecret = await prisma.aPIKey.findFirst({ where: { provider } });
+      const dbSecret = await secretStore.getProvider(provider);
       if (dbSecret?.isActive && dbSecret.key?.trim()) {
         return dbSecret.key.trim();
       }
@@ -142,7 +142,7 @@ export class EmbeddingService {
   private async resolveBaseUrl(provider: LLMProvider): Promise<string> {
     let dbBaseURL: string | undefined;
     try {
-      const record = await prisma.aPIKey.findFirst({ where: { provider } });
+      const record = await secretStore.getProvider(provider);
       if (record?.isActive && record.baseURL?.trim()) {
         dbBaseURL = record.baseURL.trim();
       }

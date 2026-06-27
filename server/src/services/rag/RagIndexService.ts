@@ -2,6 +2,8 @@ import type { RagIndexJob } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { ragConfig } from "../../config/rag";
 import { getRagEmbeddingSettings } from "../settings/RagSettingsService";
+import { getRagRuntimeSettings } from "../settings/RagRuntimeSettingsService";
+import type { AuthUser } from "../../auth/authContext";
 import { EmbeddingService } from "./EmbeddingService";
 import { VectorStoreService } from "./VectorStoreService";
 import { resolveEmbeddingChunkTokenBudget } from "./embeddingModelLimits";
@@ -154,6 +156,31 @@ export class RagIndexService {
       updatedAt: job.updatedAt,
       progress: payload.progress,
     };
+  }
+
+  async resolveJobOwner(job: RagIndexJob): Promise<AuthUser | null> {
+    if (!job.userId?.trim()) {
+      return null;
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: job.userId },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        role: true,
+        status: true,
+      },
+    });
+    return user
+      ? {
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        role: user.role as AuthUser["role"],
+        status: user.status as AuthUser["status"],
+      }
+      : null;
   }
 
   private async embedTextsInBatches(
@@ -1012,6 +1039,7 @@ export class RagIndexService {
   }
 
   async processJob(job: RagIndexJob): Promise<{ chunks: number }> {
+    await getRagRuntimeSettings();
     await getRagEmbeddingSettings();
     await this.assertJobNotCancelled(job.id);
     const tenantId = job.tenantId || ragConfig.defaultTenantId;

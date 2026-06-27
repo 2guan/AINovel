@@ -1,6 +1,8 @@
 import "dotenv/config";
 import { ensureRuntimeDatabaseReady } from "../db/runtimeMigrations";
 import { loadProviderApiKeys } from "../llm/factory";
+import { runWithUserIdContext } from "../auth/runWithUserContext";
+import { prisma } from "../db/prisma";
 import { initializeRagSettingsCompatibility } from "../services/settings/RagCompatibilityBootstrapService";
 import { DirectorCommandExecutor } from "../services/novel/director/commands/DirectorCommandExecutor";
 import { DirectorTaskQueue, type DirectorTaskQueueOptions } from "./DirectorTaskQueue";
@@ -85,7 +87,11 @@ export class DirectorWorker {
           `[director.worker] executing commandId=${command.id} type=${command.commandType} taskId=${command.taskId} novelId=${command.novelId} slot=${slotId}`,
         );
 
-        const outcome = await this.commandExecutor.execute(command.id);
+        const taskOwner = await prisma.novelWorkflowTask.findUnique({
+          where: { id: command.taskId },
+          select: { userId: true },
+        });
+        const outcome = await runWithUserIdContext(taskOwner?.userId, () => this.commandExecutor.execute(command.id));
 
         if (outcome === "cancelled") {
           await this.queue.cancelTask(command.id, slotId);
