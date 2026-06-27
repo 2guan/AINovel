@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { ApiResponse } from "@ai-novel/shared/types/api";
 import { z } from "zod";
+import { prisma } from "../db/prisma";
 import { authMiddleware } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import { KnowledgeService } from "../services/knowledge/KnowledgeService";
@@ -44,6 +45,25 @@ const patchDocumentSchema = z.object({
 });
 
 router.use(authMiddleware);
+router.param("id", async (req, res, next, id) => {
+  try {
+    if (req.user?.role === "admin") {
+      next();
+      return;
+    }
+    const row = await prisma.knowledgeDocument.findFirst({
+      where: { id, userId: req.user?.id ?? "" },
+      select: { id: true },
+    });
+    if (!row) {
+      res.status(404).json({ success: false, error: "Knowledge document not found." } satisfies ApiResponse<null>);
+      return;
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get("/documents", validate({ query: listDocumentsQuerySchema }), async (req, res, next) => {
   try {

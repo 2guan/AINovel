@@ -117,7 +117,7 @@ export class EmbeddingService {
 
   private async resolveApiKey(provider: LLMProvider): Promise<string | undefined> {
     try {
-      const dbSecret = await prisma.aPIKey.findUnique({ where: { provider } });
+      const dbSecret = await prisma.aPIKey.findFirst({ where: { provider } });
       if (dbSecret?.isActive && dbSecret.key?.trim()) {
         return dbSecret.key.trim();
       }
@@ -142,7 +142,7 @@ export class EmbeddingService {
   private async resolveBaseUrl(provider: LLMProvider): Promise<string> {
     let dbBaseURL: string | undefined;
     try {
-      const record = await prisma.aPIKey.findUnique({ where: { provider } });
+      const record = await prisma.aPIKey.findFirst({ where: { provider } });
       if (record?.isActive && record.baseURL?.trim()) {
         dbBaseURL = record.baseURL.trim();
       }

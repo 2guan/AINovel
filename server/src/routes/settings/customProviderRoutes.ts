@@ -2,6 +2,7 @@ import type { Router } from "express";
 import type { ApiResponse } from "@ai-novel/shared/types/api";
 import { z } from "zod";
 import { prisma } from "../../db/prisma";
+import { getCurrentUserId } from "../../auth/authContext";
 import { setProviderSecretCache } from "../../llm/factory";
 import { refreshProviderModels } from "../../llm/modelCatalog";
 import { llmProviderSchema } from "../../llm/providerSchema";
@@ -225,7 +226,7 @@ export function registerCustomProviderRoutes(router: Router): void {
           throw new AppError("没有找到这个自定义厂商。", 404);
         }
         const routeInUse = await prisma.modelRouteConfig.findFirst({
-          where: { provider },
+          where: { userId: getCurrentUserId(), provider },
           select: { taskType: true },
         });
         if (routeInUse) {

@@ -1,5 +1,8 @@
 import { prisma } from "../../../db/prisma";
+import { getCurrentUserId } from "../../../auth/authContext";
 import type { SecretStore, SecretStoreListOptions, SecretStoreRecord, SecretStoreWriteInput } from "./SecretStore";
+
+const ADMIN_USER_ID = "admin";
 
 function toPrismaWriteInput(input: SecretStoreWriteInput): Record<string, unknown> {
   return {
@@ -16,8 +19,10 @@ function toPrismaWriteInput(input: SecretStoreWriteInput): Record<string, unknow
 
 export class DatabaseSecretStore implements SecretStore {
   async listProviders(options?: SecretStoreListOptions): Promise<SecretStoreRecord[]> {
-    return prisma.aPIKey.findMany({
+    const userId = getCurrentUserId();
+    const rows = await prisma.aPIKey.findMany({
       where: {
+        userId: userId === ADMIN_USER_ID ? ADMIN_USER_ID : { in: [ADMIN_USER_ID, userId] },
         ...(options?.onlyActive ? { isActive: true } : {}),
         ...(options?.providers?.length
           ? {
@@ -27,19 +32,39 @@ export class DatabaseSecretStore implements SecretStore {
           }
           : {}),
       },
-      orderBy: [{ createdAt: "asc" }],
+      orderBy: [{ userId: "asc" }, { createdAt: "asc" }],
     });
+    if (userId === ADMIN_USER_ID) {
+      return rows;
+    }
+    const merged = new Map<string, SecretStoreRecord>();
+    for (const row of rows) {
+      merged.set(row.provider, row);
+    }
+    for (const row of rows) {
+      if (row.userId === userId) {
+        merged.set(row.provider, row);
+      }
+    }
+    return Array.from(merged.values());
   }
 
   async getProvider(provider: string): Promise<SecretStoreRecord | null> {
+    const userId = getCurrentUserId();
+    const own = await prisma.aPIKey.findUnique({
+      where: { userId_provider: { userId, provider } },
+    });
+    if (own || userId === ADMIN_USER_ID) {
+      return own;
+    }
     return prisma.aPIKey.findUnique({
-      where: { provider },
+      where: { userId_provider: { userId: ADMIN_USER_ID, provider } },
     });
   }
 
   async hasProvider(provider: string): Promise<boolean> {
     const existing = await prisma.aPIKey.findUnique({
-      where: { provider },
+      where: { userId_provider: { userId: getCurrentUserId(), provider } },
       select: { id: true },
     });
     return existing != null;
@@ -48,6 +73,7 @@ export class DatabaseSecretStore implements SecretStore {
   async createProvider(provider: string, input: SecretStoreWriteInput): Promise<SecretStoreRecord> {
     return prisma.aPIKey.create({
       data: ({
+        userId: getCurrentUserId(),
         provider,
         ...toPrismaWriteInput(input),
       } as Record<string, unknown>) as never,
@@ -55,18 +81,17 @@ export class DatabaseSecretStore implements SecretStore {
   }
 
   async updateProvider(provider: string, input: SecretStoreWriteInput): Promise<SecretStoreRecord> {
-    return prisma.aPIKey.update({
-      where: { provider },
-      data: toPrismaWriteInput(input) as never,
-    });
+    return this.upsertProvider(provider, input);
   }
 
   async upsertProvider(provider: string, input: SecretStoreWriteInput): Promise<SecretStoreRecord> {
+    const userId = getCurrentUserId();
     const writeInput = toPrismaWriteInput(input);
     return prisma.aPIKey.upsert({
-      where: { provider },
+      where: { userId_provider: { userId, provider } },
       update: writeInput as never,
       create: ({
+        userId,
         provider,
         ...writeInput,
       } as Record<string, unknown>) as never,
@@ -75,7 +100,7 @@ export class DatabaseSecretStore implements SecretStore {
 
   async deleteProvider(provider: string): Promise<void> {
     await prisma.aPIKey.delete({
-      where: { provider },
+      where: { userId_provider: { userId: getCurrentUserId(), provider } },
     });
   }
 }

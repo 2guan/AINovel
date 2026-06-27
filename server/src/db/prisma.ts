@@ -3,6 +3,7 @@ import path from "node:path";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { getCurrentAuthUser } from "../auth/authContext";
 import { getDatabaseUrl } from "../config/database";
 import { resolveDatabaseFilePath } from "../runtime/appPaths";
 import { configureSqliteRuntimePragmas } from "./sqlitePragmas";
@@ -26,6 +27,67 @@ function resolveSqliteBusyTimeout(timeoutValue?: string): number {
 }
 
 const databaseUrl = getDatabaseUrl();
+const USER_OWNED_MODELS = new Set([
+  "Novel",
+  "BaseCharacter",
+  "CharacterSyncProposal",
+  "ImageGenerationTask",
+  "StyleExtractionTask",
+  "ImageAsset",
+  "World",
+  "WorldPropertyLibrary",
+  "WritingFormula",
+  "StyleProfile",
+  "TitleLibrary",
+  "APIKey",
+  "ModelRouteConfig",
+  "CreativeHubThread",
+  "KnowledgeDocument",
+  "BookAnalysis",
+  "TaskCenterArchive",
+  "DramaProject",
+  "DramaCharacterLibrary",
+  "ComicProject",
+]);
+
+function getScopedUserId(): string | null {
+  const user = getCurrentAuthUser();
+  if (!user || user.role === "admin") {
+    return null;
+  }
+  return user.id;
+}
+
+function withUserWhere(args: Record<string, unknown>, userId: string): Record<string, unknown> {
+  return {
+    ...args,
+    where: {
+      ...((args.where as Record<string, unknown> | undefined) ?? {}),
+      userId,
+    },
+  };
+}
+
+function withUserData(args: Record<string, unknown>, userId: string): Record<string, unknown> {
+  const data = args.data;
+  if (Array.isArray(data)) {
+    return {
+      ...args,
+      data: data.map((item) => ({
+        ...(item as Record<string, unknown>),
+        userId: (item as Record<string, unknown>).userId ?? userId,
+      })),
+    };
+  }
+  return {
+    ...args,
+    data: {
+      ...((data as Record<string, unknown> | undefined) ?? {}),
+      userId: ((data as Record<string, unknown> | undefined) ?? {}).userId ?? userId,
+    },
+  };
+}
+
 const adapter = databaseUrl.startsWith("file:")
   ? (() => {
       const timeout = resolveSqliteBusyTimeout(process.env.SQLITE_BUSY_TIMEOUT_MS);
@@ -43,12 +105,31 @@ const adapter = databaseUrl.startsWith("file:")
       connectionString: databaseUrl,
     });
 
-export const prisma =
-  global.prisma ??
-  new PrismaClient({
+const scopedPrisma = new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
-  });
+  }).$extends({
+    query: {
+      $allModels: {
+        async $allOperations({ model, operation, args, query }) {
+          const userId = model && USER_OWNED_MODELS.has(model) ? getScopedUserId() : null;
+          if (!userId || !args || typeof args !== "object") {
+            return query(args);
+          }
+          const mutableArgs = args as Record<string, unknown>;
+          if (operation === "findMany" || operation === "findFirst" || operation === "count" || operation === "aggregate" || operation === "groupBy" || operation === "updateMany" || operation === "deleteMany") {
+            return query(withUserWhere(mutableArgs, userId));
+          }
+          if (operation === "create" || operation === "createMany") {
+            return query(withUserData(mutableArgs, userId));
+          }
+          return query(args);
+        },
+      },
+    },
+  }) as unknown as PrismaClient;
+
+export const prisma: PrismaClient = global.prisma ?? scopedPrisma;
 
 if (process.env.NODE_ENV !== "production") {
   global.prisma = prisma;

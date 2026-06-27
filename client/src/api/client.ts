@@ -1,5 +1,6 @@
 import axios, { AxiosError } from "axios";
 import type { ApiResponse } from "@ai-novel/shared/types/api";
+import { getAuthToken, clearAuthToken } from "@/auth/authStorage";
 import { API_BASE_URL, API_TIMEOUT_MS } from "@/lib/constants";
 import { toast } from "@/components/ui/toast";
 
@@ -17,6 +18,14 @@ declare module "axios" {
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_TIMEOUT_MS,
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 const AUTO_DISMISS_SERVER_ERROR_TOAST = {
@@ -37,6 +46,11 @@ apiClient.interceptors.response.use(
     if (!status) {
       title = "网络连接失败，请检查网络后重试。";
       description = undefined;
+    } else if (status === 401 && !error.config?.url?.startsWith("/auth/")) {
+      clearAuthToken();
+      if (window.location.pathname !== "/login") {
+        window.location.assign("/login");
+      }
     } else if (status >= 500) {
       title = backendError ?? "服务器错误，请稍后重试。";
       description = backendMessage && backendMessage !== title ? backendMessage : undefined;

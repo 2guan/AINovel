@@ -13,6 +13,7 @@ import { listNovelTokenUsageByNovelIds } from "./novelTokenUsageSummary";
 import {
   ChapterInput,
   CreateNovelInput,
+  AuthScope,
   normalizeNovelOutput,
   normalizeOptionalTextForCreate,
   normalizeOptionalTextForUpdate,
@@ -34,14 +35,21 @@ export class NovelCoreCrudService {
     }
   }
 
-  async listNovels({ page, limit }: PaginationInput) {
+  private getOwnerWhere(scope?: AuthScope): { userId?: string } {
+    return scope?.role === "admin" ? {} : { userId: scope?.userId ?? "admin" };
+  }
+
+  async listNovels({ page, limit }: PaginationInput, scope?: AuthScope) {
+    const ownerWhere = this.getOwnerWhere(scope);
     const [items, total] = await Promise.all([
       prisma.novel.findMany({
+        where: ownerWhere,
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { updatedAt: "desc" },
         select: {
           id: true,
+          userId: true,
           title: true,
           description: true,
           targetAudience: true,
@@ -76,10 +84,11 @@ export class NovelCoreCrudService {
           updatedAt: true,
           genre: { select: { id: true, name: true } },
           world: { select: { id: true, name: true, worldType: true } },
+          owner: { select: { id: true, username: true, displayName: true } },
           _count: { select: { chapters: true, characters: true, plotBeats: true } },
         },
       }),
-      prisma.novel.count(),
+      prisma.novel.count({ where: ownerWhere }),
     ]);
 
     const latestAutoDirectorTaskByNovelId = await this.listLatestVisibleAutoDirectorTasksByNovelIds(
@@ -205,7 +214,7 @@ export class NovelCoreCrudService {
     return taskByNovelId;
   }
 
-  async createNovel(input: CreateNovelInput) {
+  async createNovel(input: CreateNovelInput, scope?: AuthScope) {
     const writingMode = input.writingMode ?? "original";
     const sourceNovelId = input.sourceNovelId ?? null;
     const sourceKnowledgeDocumentId = input.sourceKnowledgeDocumentId ?? null;
@@ -227,6 +236,7 @@ export class NovelCoreCrudService {
 
     const created = await prisma.novel.create({
       data: {
+        userId: scope?.userId ?? "admin",
         title: input.title,
         description: input.description,
         targetAudience: normalizeOptionalTextForCreate(input.targetAudience),
@@ -271,10 +281,14 @@ export class NovelCoreCrudService {
     return normalizeNovelOutput(created);
   }
 
-  async getNovelById(id: string) {
-    const row = await prisma.novel.findUnique({
-      where: { id },
+  async getNovelById(id: string, scope?: AuthScope) {
+    const row = await prisma.novel.findFirst({
+      where: {
+        id,
+        ...this.getOwnerWhere(scope),
+      },
       include: {
+        owner: { select: { id: true, username: true, displayName: true } },
         genre: true,
         primaryStoryMode: true,
         secondaryStoryMode: true,
@@ -292,9 +306,12 @@ export class NovelCoreCrudService {
     return normalizeNovelOutput(row);
   }
 
-  async updateNovel(id: string, input: UpdateNovelInput) {
-    const existing = await prisma.novel.findUnique({
-      where: { id },
+  async updateNovel(id: string, input: UpdateNovelInput, scope?: AuthScope) {
+    const existing = await prisma.novel.findFirst({
+      where: {
+        id,
+        ...this.getOwnerWhere(scope),
+      },
       select: {
         id: true,
         worldId: true,
@@ -400,7 +417,17 @@ export class NovelCoreCrudService {
     return normalizeNovelOutput(updated);
   }
 
-  async deleteNovel(id: string) {
+  async deleteNovel(id: string, scope?: AuthScope) {
+    const existing = await prisma.novel.findFirst({
+      where: {
+        id,
+        ...this.getOwnerWhere(scope),
+      },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new Error("小说不存在");
+    }
     queueRagDelete("novel", id);
     queueRagDelete("bible", id);
     await prisma.novel.delete({ where: { id } });

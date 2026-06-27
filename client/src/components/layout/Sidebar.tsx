@@ -29,6 +29,7 @@ import { listKnowledgeDocuments } from "@/api/knowledge";
 import { queryKeys } from "@/api/queryKeys";
 import { getAutoDirectorFollowUpOverview } from "@/api/autoDirectorFollowUps";
 import { getTaskOverview } from "@/api/tasks";
+import { useAuth } from "@/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   disabled?: boolean;
+  adminOnly?: boolean;
 }
 
 interface NavGroup {
@@ -76,7 +78,8 @@ const navGroups: NavGroup[] = [
   {
     title: "系统",
     items: [
-      { to: "/prompt-workbench", label: "提示词管理", icon: Braces },
+      { to: "/prompt-workbench", label: "提示词管理", icon: Braces, adminOnly: true },
+      { to: "/settings/users", label: "成员管理", icon: UsersRound, adminOnly: true },
       { to: "/settings/model-routes", label: "模型路由", icon: Route },
       { to: "/settings", label: "系统设置", icon: Settings2 },
     ],
@@ -90,6 +93,7 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [badgeQueriesEnabled, setBadgeQueriesEnabled] = useState(false);
+  const { isAdmin } = useAuth();
 
   useEffect(() => {
     const timer = window.setTimeout(() => setBadgeQueriesEnabled(true), 500);
@@ -220,7 +224,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <div className="mx-auto h-px w-8 bg-border/70" />
             )}
 
-            {group.items.map((item) => {
+            {group.items.filter((item) => !item.adminOnly || isAdmin).map((item) => {
               const Icon = item.icon;
               const isNovelEntry = item.to === "/novels";
 

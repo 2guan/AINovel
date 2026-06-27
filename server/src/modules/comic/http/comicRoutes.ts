@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { ApiResponse } from "@ai-novel/shared/types/api";
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
 import { z } from "zod";
+import { prisma } from "../../../db/prisma";
 import { validate } from "../../../middleware/validate";
 import { ComicProjectService } from "../../../services/comic/ComicProjectService";
 import { ComicEpisodePlanService } from "../../../services/comic/ComicEpisodePlanService";
@@ -18,6 +19,26 @@ const comicEpisodePlanService = new ComicEpisodePlanService();
 const comicPanelScriptService = new ComicPanelScriptService();
 
 const router = Router();
+
+router.param("id", async (req, res, next, id) => {
+  try {
+    if (req.user?.role === "admin") {
+      next();
+      return;
+    }
+    const row = await prisma.comicProject.findFirst({
+      where: { id, userId: req.user?.id ?? "" },
+      select: { id: true },
+    });
+    if (!row) {
+      res.status(404).json({ success: false, error: "漫画项目不存在。" } satisfies ApiResponse<null>);
+      return;
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 // ─── Param schemas ─────────────────────────────────────────────────────────
 

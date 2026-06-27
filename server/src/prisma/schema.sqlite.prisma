@@ -242,6 +242,44 @@ enum StoryPlanLevel {
   chapter
 }
 
+enum UserRole {
+  admin
+  writer
+  pending
+}
+
+enum UserStatus {
+  active
+  pending_review
+  disabled
+}
+
+model User {
+  id           String     @id @default(cuid())
+  username     String     @unique
+  displayName  String?
+  passwordHash String
+  role         UserRole   @default(pending)
+  status       UserStatus @default(pending_review)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  novels       Novel[]
+
+  @@index([role, status])
+  @@index([createdAt])
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, expiresAt])
+}
+
 enum StoryPlanRole {
   setup
   progress
@@ -306,6 +344,7 @@ enum CharacterGender {
 
 model Novel {
   id                String      @id @default(cuid())
+  userId            String      @default("admin")
   title             String
   description       String?
   targetAudience    String?
@@ -345,6 +384,7 @@ model Novel {
   primaryStoryMode  NovelStoryMode? @relation("NovelPrimaryStoryMode", fields: [primaryStoryModeId], references: [id], onDelete: SetNull)
   secondaryStoryMode NovelStoryMode? @relation("NovelSecondaryStoryMode", fields: [secondaryStoryModeId], references: [id], onDelete: SetNull)
   world             World?      @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  owner             User        @relation(fields: [userId], references: [id], onDelete: Restrict)
   sourceNovel       Novel?      @relation("NovelContinuation", fields: [sourceNovelId], references: [id], onDelete: SetNull)
   continuationNovels Novel[]    @relation("NovelContinuation")
   sourceKnowledgeDocument KnowledgeDocument? @relation("NovelKnowledgeContinuation", fields: [sourceKnowledgeDocumentId], references: [id], onDelete: SetNull)
@@ -410,6 +450,7 @@ model Novel {
   @@index([sourceNovelId])
   @@index([sourceKnowledgeDocumentId])
   @@index([continuationBookAnalysisId])
+  @@index([userId, updatedAt])
 }
 
 model PromptAddendum {
@@ -839,6 +880,7 @@ model CharacterRelationStage {
 
 model BaseCharacter {
   id          String   @id @default(cuid())
+  userId      String   @default("admin")
   name        String
   role        String
   personality String
@@ -857,6 +899,8 @@ model BaseCharacter {
   imageAssets ImageAsset[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId, updatedAt])
 }
 
 model BaseCharacterRevision {
@@ -900,6 +944,7 @@ model CharacterLibraryLink {
 
 model CharacterSyncProposal {
   id                String   @id @default(cuid())
+  userId            String   @default("admin")
   novelId           String?
   characterId       String?
   baseCharacterId   String?
@@ -926,10 +971,12 @@ model CharacterSyncProposal {
   @@index([characterId, status, updatedAt])
   @@index([baseCharacterId, status, updatedAt])
   @@index([baseRevisionId])
+  @@index([userId, status, updatedAt])
 }
 
 model ImageGenerationTask {
   id              String            @id @default(cuid())
+  userId          String            @default("admin")
   sceneType       ImageSceneType    @default(character)
   baseCharacterId String?
   novelId         String?
@@ -963,10 +1010,12 @@ model ImageGenerationTask {
   @@index([sceneType, status])
   @@index([baseCharacterId, createdAt])
   @@index([novelId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model StyleExtractionTask {
   id                    String            @id @default(cuid())
+  userId                String            @default("admin")
   name                  String
   category              String?
     sourceText            String
@@ -1007,10 +1056,12 @@ model StyleExtractionTask {
   @@index([status, updatedAt])
   @@index([createdStyleProfileId])
   @@index([sourceType, sourceRefId])
+  @@index([userId, updatedAt])
 }
 
 model ImageAsset {
   id              String            @id @default(cuid())
+  userId          String            @default("admin")
   taskId          String
   sceneType       ImageSceneType    @default(character)
   baseCharacterId String?
@@ -1036,6 +1087,7 @@ model ImageAsset {
   @@index([sceneType, createdAt])
   @@index([baseCharacterId, isPrimary, createdAt])
   @@index([novelId, isPrimary, createdAt])
+  @@index([userId, createdAt])
 }
 
 model NovelGenre {
@@ -1072,6 +1124,7 @@ model NovelStoryMode {
 
 model World {
   id                 String                @id @default(cuid())
+  userId             String                @default("admin")
   name               String
   description        String?
   worldType          String?
@@ -1108,6 +1161,8 @@ model World {
   assets             WorldAsset[]
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
+
+  @@index([userId, updatedAt])
 }
 
 model NovelWorld {
@@ -1182,6 +1237,7 @@ model WorldAsset {
 
 model WorldPropertyLibrary {
   id            String  @id @default(cuid())
+  userId        String  @default("admin")
   name          String
   description   String?
   category      String
@@ -1193,6 +1249,7 @@ model WorldPropertyLibrary {
   updatedAt     DateTime @updatedAt
 
   @@index([sourceWorldId])
+  @@index([userId, updatedAt])
 }
 
 model WorldSnapshot {
@@ -1243,6 +1300,7 @@ model WorldConsistencyIssue {
 
 model WritingFormula {
   id                 String   @id @default(cuid())
+  userId             String   @default("admin")
   name               String
   sourceText         String?
   content            String?
@@ -1267,10 +1325,13 @@ model WritingFormula {
   applicationTips    String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  @@index([userId, updatedAt])
 }
 
 model StyleProfile {
   id                 String   @id @default(cuid())
+  userId             String   @default("admin")
   name               String
   description        String?
   category           String?
@@ -1296,6 +1357,7 @@ model StyleProfile {
 
   @@index([status, updatedAt])
   @@index([sourceType, sourceRefId])
+  @@index([userId, updatedAt])
 }
 
 model StyleTemplate {
@@ -1370,6 +1432,7 @@ model StyleBinding {
 
 model TitleLibrary {
   id          String   @id @default(cuid())
+  userId      String   @default("admin")
   title       String
   description String?
   clickRate   Float?
@@ -1378,10 +1441,13 @@ model TitleLibrary {
   usedCount   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId, updatedAt])
 }
 
 model APIKey {
   id        String   @id @default(cuid())
+  userId    String   @default("admin")
   provider  String
   displayName String?
   key       String?
@@ -1394,7 +1460,8 @@ model APIKey {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([provider])
+  @@unique([userId, provider])
+  @@index([provider])
 }
 
 model AppSetting {
@@ -1406,7 +1473,8 @@ model AppSetting {
 
 model ModelRouteConfig {
   id                       String  @id @default(cuid())
-  taskType                 String  @unique
+  userId                   String  @default("admin")
+  taskType                 String
   provider                 String
   model                    String
   temperature              Float   @default(0.7)
@@ -1416,7 +1484,9 @@ model ModelRouteConfig {
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 
+  @@unique([userId, taskType])
   @@index([provider])
+  @@index([userId])
 }
 
 model NovelBible {
@@ -1603,6 +1673,7 @@ model AgentApproval {
 
 model CreativeHubThread {
   id               String                  @id @default(cuid())
+  userId           String                  @default("admin")
   title            String                  @default("新对话")
   archived         Boolean                 @default(false)
   status           CreativeHubThreadStatus @default(idle)
@@ -1616,6 +1687,7 @@ model CreativeHubThread {
 
   @@index([archived, updatedAt])
   @@index([status, updatedAt])
+  @@index([userId, updatedAt])
 }
 
 model CreativeHubCheckpoint {
@@ -2602,6 +2674,7 @@ model AuditIssue {
 
 model KnowledgeDocument {
   id                     String                   @id @default(cuid())
+  userId                 String                   @default("admin")
   title                  String
   fileName               String
   status                 KnowledgeDocumentStatus  @default(enabled)
@@ -2620,6 +2693,7 @@ model KnowledgeDocument {
 
   @@index([status, updatedAt])
   @@index([title])
+  @@index([userId, updatedAt])
 }
 
 model KnowledgeDocumentVersion {
@@ -2655,6 +2729,7 @@ model KnowledgeBinding {
 
 model BookAnalysis {
   id                          String             @id @default(cuid())
+  userId                      String             @default("admin")
   documentId                  String
   documentVersionId           String
   title                       String
@@ -2687,6 +2762,7 @@ model BookAnalysis {
   @@index([documentId, status])
   @@index([documentVersionId])
   @@index([status, updatedAt])
+  @@index([userId, updatedAt])
 }
 
 model BookAnalysisSourceCache {
@@ -2800,12 +2876,14 @@ model NovelSideEffectJob {
 
 model TaskCenterArchive {
   id         String   @id @default(cuid())
+  userId     String   @default("admin")
   taskKind   String
   taskId     String
   archivedAt DateTime @default(now())
 
-  @@unique([taskKind, taskId])
+  @@unique([userId, taskKind, taskId])
   @@index([taskKind, archivedAt])
+  @@index([userId, archivedAt])
 }
 
 model StoryTimelineEvent {
@@ -2940,6 +3018,7 @@ model NovelFactEntry {
 
 model DramaProject {
   id             String   @id @default(cuid())
+  userId         String   @default("admin")
   title          String
   source         String   @default("original")
   sourceRef      String?
@@ -2964,6 +3043,7 @@ model DramaProject {
 
   @@index([source])
   @@index([status])
+  @@index([userId, updatedAt])
 }
 
 model DramaSourceBundle {
@@ -3048,6 +3128,7 @@ model DramaFact {
 
 model DramaCharacterLibrary {
   id           String   @id @default(cuid())
+  userId       String   @default("admin")
   projectId    String?
   name         String
   archetype    String?
@@ -3064,6 +3145,7 @@ model DramaCharacterLibrary {
 
   @@index([projectId])
   @@index([name])
+  @@index([userId, updatedAt])
 }
 
 model DramaStoryboard {
@@ -3161,6 +3243,7 @@ model DramaBatchJob {
 
 model ComicProject {
   id          String   @id @default(cuid())
+  userId      String   @default("admin")
   title       String
   sourceType  String   @default("original")
   sourceRef   String?
@@ -3181,6 +3264,7 @@ model ComicProject {
 
   @@index([sourceType])
   @@index([status])
+  @@index([userId, updatedAt])
 }
 
 model ComicSourceBundle {

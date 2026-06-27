@@ -4,6 +4,7 @@ import {
   CharacterInput,
   CharacterTimelineSyncOptions,
   CreateNovelInput,
+  AuthScope,
   GenerateBeatOptions,
   HookGenerateOptions,
   LLMGenerateOptions,
@@ -35,16 +36,16 @@ export class NovelCoreService {
   private readonly pipelineService = new NovelCorePipelineService();
   private readonly snapshotService = new NovelCoreSnapshotService();
 
-  async listNovels(input: PaginationInput) {
-    return this.crudService.listNovels(input);
+  async listNovels(input: PaginationInput, scope?: AuthScope) {
+    return this.crudService.listNovels(input, scope);
   }
 
-  async createNovel(input: CreateNovelInput) {
-    return this.crudService.createNovel(input);
+  async createNovel(input: CreateNovelInput, scope?: AuthScope) {
+    return this.crudService.createNovel(input, scope);
   }
 
-  async getNovelById(id: string) {
-    return this.crudService.getNovelById(id);
+  async getNovelById(id: string, scope?: AuthScope) {
+    return this.crudService.getNovelById(id, scope);
   }
 
   async listStorylineVersions(novelId: string) {
@@ -71,12 +72,12 @@ export class NovelCoreService {
     return this.storylineService.analyzeStorylineImpact(novelId, input);
   }
 
-  async updateNovel(id: string, input: UpdateNovelInput) {
-    return this.crudService.updateNovel(id, input);
+  async updateNovel(id: string, input: UpdateNovelInput, scope?: AuthScope) {
+    return this.crudService.updateNovel(id, input, scope);
   }
 
-  async deleteNovel(id: string) {
-    return this.crudService.deleteNovel(id);
+  async deleteNovel(id: string, scope?: AuthScope) {
+    return this.crudService.deleteNovel(id, scope);
   }
 
   async listChapters(novelId: string) {

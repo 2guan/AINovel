@@ -1,7 +1,9 @@
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
+import { getCurrentUserId } from "../../auth/authContext";
 import { prisma } from "../../db/prisma";
 
 const LLM_SELECTION_SETTING_KEY = "llm.currentSelection";
+const ADMIN_USER_ID = "admin";
 const DEFAULT_TEMPERATURE = 0.7;
 
 export interface LLMSelectionSettings {
@@ -69,6 +71,15 @@ function serializeSelection(input: LLMSelectionSettings): string {
 }
 
 export async function getLLMSelectionSettings(): Promise<LLMSelectionSettings | null> {
+  const userId = getCurrentUserId();
+  if (userId !== ADMIN_USER_ID) {
+    const ownRecord = await prisma.appSetting.findUnique({
+      where: { key: `${LLM_SELECTION_SETTING_KEY}.${userId}` },
+    });
+    if (ownRecord) {
+      return parseSelectionPayload(ownRecord.value);
+    }
+  }
   const record = await prisma.appSetting.findUnique({
     where: { key: LLM_SELECTION_SETTING_KEY },
   });
@@ -89,9 +100,12 @@ export async function saveLLMSelectionSettings(input: SaveLLMSelectionSettingsIn
     ...(maxTokens !== undefined ? { maxTokens } : {}),
   };
   await prisma.appSetting.upsert({
-    where: { key: LLM_SELECTION_SETTING_KEY },
+    where: { key: getCurrentUserId() === ADMIN_USER_ID ? LLM_SELECTION_SETTING_KEY : `${LLM_SELECTION_SETTING_KEY}.${getCurrentUserId()}` },
     update: { value: serializeSelection(settings) },
-    create: { key: LLM_SELECTION_SETTING_KEY, value: serializeSelection(settings) },
+    create: {
+      key: getCurrentUserId() === ADMIN_USER_ID ? LLM_SELECTION_SETTING_KEY : `${LLM_SELECTION_SETTING_KEY}.${getCurrentUserId()}`,
+      value: serializeSelection(settings),
+    },
   });
   return settings;
 }

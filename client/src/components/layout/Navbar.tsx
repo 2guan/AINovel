@@ -1,8 +1,12 @@
 import { useLocation } from "react-router-dom";
+import { KeyRound, LogOut } from "lucide-react";
+import { changePassword } from "@/api/auth";
+import { useAuth } from "@/auth/AuthProvider";
 import LLMSelector from "@/components/common/LLMSelector";
 import AppVersionBadge from "@/components/layout/AppVersionBadge";
 import DesktopBrandMark from "@/components/layout/DesktopBrandMark";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import {
   AUTO_DIRECTOR_MOBILE_CLASSES,
   shouldUseAutoDirectorMobileFullWidthContent,
@@ -16,6 +20,7 @@ interface NavbarProps {
 export default function Navbar(props: NavbarProps) {
   const { workspaceNavMode, onWorkspaceNavModeChange } = props;
   const location = useLocation();
+  const { user, logout } = useAuth();
   const isHome = location.pathname === "/";
   const showWorkspaceToggle = Boolean(workspaceNavMode && onWorkspaceNavModeChange);
   const useMobileAutoDirectorShell = shouldUseAutoDirectorMobileFullWidthContent(location.pathname);
@@ -47,6 +52,47 @@ export default function Navbar(props: NavbarProps) {
         <div className={useMobileAutoDirectorShell ? AUTO_DIRECTOR_MOBILE_CLASSES.navbarModelSelector : undefined}>
           <LLMSelector compact showBadge={false} showHelperText={false} />
         </div>
+        {user ? (
+          <div className="hidden items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground sm:flex">
+            <span className="max-w-28 truncate">{user.displayName || user.username}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              title="修改密码"
+              onClick={async () => {
+                const currentPassword = window.prompt("输入当前密码");
+                if (!currentPassword) return;
+                const nextPassword = window.prompt("输入新密码");
+                if (!nextPassword) return;
+                try {
+                  await changePassword({ currentPassword, nextPassword });
+                  toast.success("密码已更新，请重新登录。");
+                  await logout();
+                  window.location.assign("/login");
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "修改密码失败。");
+                }
+              }}
+            >
+              <KeyRound className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              title="退出登录"
+              onClick={async () => {
+                await logout();
+                window.location.assign("/login");
+              }}
+            >
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
+        ) : null}
       </div>
     </header>
   );

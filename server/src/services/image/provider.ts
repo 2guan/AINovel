@@ -58,7 +58,7 @@ async function resolveProviderSecret(provider: LLMProvider): Promise<ProviderSec
   let savedBaseURL: string | undefined;
 
   try {
-    const config = await prisma.aPIKey.findUnique({
+    const config = await prisma.aPIKey.findFirst({
       where: { provider },
     });
     if (config?.isActive) {

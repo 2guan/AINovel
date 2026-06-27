@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { ApiResponse } from "@ai-novel/shared/types/api";
 import { z } from "zod";
-import { authMiddleware } from "../middleware/auth";
+import { authMiddleware, requireAdmin } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import {
   promptWorkbenchService,
@@ -17,7 +17,7 @@ import { reconcileSlots, adoptSlots, keepMineSlots } from "../prompting/slots/sl
 
 const router = Router();
 
-router.use(authMiddleware);
+router.use(authMiddleware, requireAdmin);
 
 const catalogQuerySchema = z.object({
   taskType: z.string().trim().min(1).optional(),

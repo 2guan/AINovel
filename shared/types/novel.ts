@@ -144,6 +144,12 @@ export type ModelRouteTaskType =
 
 export interface Novel {
   id: string;
+  userId?: string;
+  owner?: {
+    id: string;
+    username: string;
+    displayName?: string | null;
+  } | null;
   title: string;
   description?: string | null;
   targetAudience?: string | null;

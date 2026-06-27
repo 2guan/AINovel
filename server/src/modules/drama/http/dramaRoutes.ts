@@ -3,6 +3,7 @@ import path from "path";
 import { Router } from "express";
 import type { ApiResponse } from "@ai-novel/shared/types/api";
 import { z } from "zod";
+import { prisma } from "../../../db/prisma";
 import { validate } from "../../../middleware/validate";
 import { dramaCharacterImageService } from "../../../services/drama/DramaCharacterImageService";
 import { dramaCharacterService } from "../../../services/drama/DramaCharacterService";
@@ -25,6 +26,26 @@ import { dramaShotKeyframeService } from "../../../services/drama/visual/DramaSh
 import { videoProviderRegistry } from "../../../services/drama/video/VideoProviderPort";
 
 const router = Router();
+
+router.param("id", async (req, res, next, id) => {
+  try {
+    if (req.user?.role === "admin") {
+      next();
+      return;
+    }
+    const row = await prisma.dramaProject.findFirst({
+      where: { id, userId: req.user?.id ?? "" },
+      select: { id: true },
+    });
+    if (!row) {
+      res.status(404).json({ success: false, error: "短剧项目不存在。" } satisfies ApiResponse<null>);
+      return;
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 const llmOptionsSchema = z
   .object({

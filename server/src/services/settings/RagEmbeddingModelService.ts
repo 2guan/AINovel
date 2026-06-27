@@ -96,7 +96,7 @@ function getProviderDisplayName(provider: EmbeddingProvider, displayName?: strin
 
 async function resolveProviderSecret(provider: EmbeddingProvider): Promise<ProviderSecret> {
   try {
-    const record = await prisma.aPIKey.findUnique({
+    const record = await prisma.aPIKey.findFirst({
       where: { provider },
     });
     const dbApiKey = record?.isActive ? record.key?.trim() : undefined;

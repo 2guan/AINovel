@@ -2,8 +2,12 @@ import { lazy } from "react";
 import type { RouteObject } from "react-router-dom";
 import { Navigate, useRoutes } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
+import { RequireAdmin, RequireAuth } from "@/auth/AuthRoute";
 import { featureFlags } from "@/config/featureFlags";
 
+const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
+const PendingReviewPage = lazy(() => import("@/pages/auth/PendingReviewPage"));
 const Home = lazy(() => import("@/pages/Home"));
 const HelpPage = lazy(() => import("@/pages/help/HelpPage"));
 const NovelList = lazy(() => import("@/pages/novels/NovelList"));
@@ -33,11 +37,26 @@ const WorldGenerator = lazy(() => import("@/pages/worlds/WorldGenerator"));
 const WorldWorkspace = lazy(() => import("@/pages/worlds/WorldWorkspace"));
 const WritingFormulaPage = lazy(() => import("@/pages/writingFormula/WritingFormulaPage"));
 const CharacterLibrary = lazy(() => import("@/pages/characters/CharacterLibrary"));
+const UserManagementPage = lazy(() => import("@/pages/users/UserManagementPage"));
 
 const routes: RouteObject[] = [
+  { path: "/login", element: <LoginPage /> },
+  { path: "/register", element: <RegisterPage /> },
+  {
+    path: "/pending-review",
+    element: (
+      <RequireAuth>
+        <PendingReviewPage />
+      </RequireAuth>
+    ),
+  },
   {
     path: "/",
-    element: <AppLayout />,
+    element: (
+      <RequireAuth>
+        <AppLayout />
+      </RequireAuth>
+    ),
     children: [
       { index: true, element: <Home /> },
       { path: "help", element: <HelpPage /> },
@@ -62,9 +81,24 @@ const routes: RouteObject[] = [
       { path: "genres", element: <GenreManagementPage /> },
       { path: "story-modes", element: <StoryModeManagementPage /> },
       { path: "titles", element: <TitleStudioPage /> },
-      { path: "prompt-workbench", element: <PromptWorkbenchPage /> },
+      {
+        path: "prompt-workbench",
+        element: (
+          <RequireAdmin>
+            <PromptWorkbenchPage />
+          </RequireAdmin>
+        ),
+      },
       { path: "anti-ai-rules", element: <AntiAiRulesPage /> },
       { path: "settings/model-routes", element: <ModelRoutesPage /> },
+      {
+        path: "settings/users",
+        element: (
+          <RequireAdmin>
+            <UserManagementPage />
+          </RequireAdmin>
+        ),
+      },
       { path: "settings", element: <SettingsPage /> },
       { path: "worlds", element: <WorldList /> },
       {

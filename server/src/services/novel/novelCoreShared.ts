@@ -9,6 +9,11 @@ export interface PaginationInput {
   limit: number;
 }
 
+export interface AuthScope {
+  userId: string;
+  role?: string | null;
+}
+
 export interface CreateNovelInput {
   title: string;
   description?: string;

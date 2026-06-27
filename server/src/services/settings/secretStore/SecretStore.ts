@@ -1,4 +1,5 @@
 export interface SecretStoreRecord {
+  userId: string;
   provider: string;
   displayName: string | null;
   key: string | null;

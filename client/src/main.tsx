@@ -5,6 +5,7 @@ import { BrowserRouter, HashRouter } from "react-router-dom";
 import "highlight.js/styles/github.css";
 import DesktopBootstrapBoundary from "./components/layout/DesktopBootstrapBoundary";
 import ServerStartupGate from "./components/layout/ServerStartupGate";
+import { AuthProvider } from "./auth/AuthProvider";
 import { APP_RUNTIME } from "./lib/constants";
 import AppRouter from "./router";
 import { Toaster } from "./components/ui/toast";
@@ -25,11 +26,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <AppRouterProvider>
-        <DesktopBootstrapBoundary>
-          <ServerStartupGate>
-            <AppRouter />
-          </ServerStartupGate>
-        </DesktopBootstrapBoundary>
+        <AuthProvider>
+          <DesktopBootstrapBoundary>
+            <ServerStartupGate>
+              <AppRouter />
+            </ServerStartupGate>
+          </DesktopBootstrapBoundary>
+        </AuthProvider>
         <Toaster />
       </AppRouterProvider>
     </QueryClientProvider>

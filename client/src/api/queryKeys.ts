@@ -144,6 +144,10 @@ export const queryKeys = {
     autoDirectorChannels: ["settings", "auto-director-channels"] as const,
     autoDirectorApprovalPreferences: ["settings", "auto-director-approval-preferences"] as const,
   },
+  users: {
+    all: ["users"] as const,
+    list: ["users", "list"] as const,
+  },
   novelsKnowledge: {
     bindings: (id: string) => ["novels", "knowledge-documents", id] as const,
   },

@@ -7,6 +7,7 @@ import { validate } from "../../../../middleware/validate";
 import { KnowledgeService } from "../../../../services/knowledge/KnowledgeService";
 import { novelCreateResourceRecommendationService } from "../../../../services/novel/NovelCreateResourceRecommendationService";
 import type { NovelApplicationServices } from "../../../../services/novel/application/NovelApplicationContracts";
+import type { AuthScope } from "../../../../services/novel/novelCoreShared";
 
 const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -149,10 +150,17 @@ export function registerNovelBaseRoutes(input: RegisterNovelBaseRoutesInput): vo
   const { router, novelService } = input;
   const knowledgeService = new KnowledgeService();
 
+  function getScope(req: { user?: { id: string; role?: string } }): AuthScope {
+    return {
+      userId: req.user?.id ?? "admin",
+      role: req.user?.role ?? "writer",
+    };
+  }
+
   router.get("/", validate({ query: paginationSchema }), async (req, res, next) => {
     try {
       const query = paginationSchema.parse(req.query);
-      const data = await novelService.listNovels({ page: query.page, limit: query.limit });
+      const data = await novelService.listNovels({ page: query.page, limit: query.limit }, getScope(req));
       const response: ApiResponse<typeof data> = {
         success: true,
         data,
@@ -166,7 +174,7 @@ export function registerNovelBaseRoutes(input: RegisterNovelBaseRoutesInput): vo
 
   router.post("/", validate({ body: createNovelSchema }), async (req, res, next) => {
     try {
-      const data = await novelService.createNovel(req.body as z.infer<typeof createNovelSchema>);
+      const data = await novelService.createNovel(req.body as z.infer<typeof createNovelSchema>, getScope(req));
       const response: ApiResponse<typeof data> = {
         success: true,
         data,
@@ -196,7 +204,7 @@ export function registerNovelBaseRoutes(input: RegisterNovelBaseRoutesInput): vo
   router.get("/:id", validate({ params: idParamsSchema }), async (req, res, next) => {
     try {
       const { id } = req.params as z.infer<typeof idParamsSchema>;
-      const data = await novelService.getNovelById(id);
+      const data = await novelService.getNovelById(id, getScope(req));
       if (!data) {
         res.status(404).json({
           success: false,
@@ -253,7 +261,7 @@ export function registerNovelBaseRoutes(input: RegisterNovelBaseRoutesInput): vo
     async (req, res, next) => {
       try {
         const { id } = req.params as z.infer<typeof idParamsSchema>;
-        const data = await novelService.updateNovel(id, req.body as z.infer<typeof updateNovelSchema>);
+        const data = await novelService.updateNovel(id, req.body as z.infer<typeof updateNovelSchema>, getScope(req));
         res.status(200).json({
           success: true,
           data,
@@ -268,7 +276,7 @@ export function registerNovelBaseRoutes(input: RegisterNovelBaseRoutesInput): vo
   router.delete("/:id", validate({ params: idParamsSchema }), async (req, res, next) => {
     try {
       const { id } = req.params as z.infer<typeof idParamsSchema>;
-      await novelService.deleteNovel(id);
+      await novelService.deleteNovel(id, getScope(req));
       res.status(200).json({
         success: true,
         message: "删除小说成功。",

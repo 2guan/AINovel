@@ -4,6 +4,7 @@ import type {
   ModelRouteStructuredResponseFormat,
   ModelRouteTaskType,
 } from "@ai-novel/shared/types/novel";
+import { getCurrentUserId } from "../auth/authContext";
 import { prisma } from "../db/prisma";
 import { isBuiltInProvider, PROVIDERS } from "./providers";
 import type { StructuredOutputStrategy } from "./structuredOutput";
@@ -26,6 +27,7 @@ const TASK_TYPE_ALIASES: Partial<Record<TaskType, ModelRouteTaskType>> = {
   summary_generation: "summary",
   fact_extraction: "fact_extraction",
 };
+const ADMIN_USER_ID = "admin";
 
 export const MODEL_ROUTE_TASK_TYPES: ModelRouteTaskType[] = [
   "planner",
@@ -271,11 +273,17 @@ export async function resolveModel(
 ): Promise<ResolvedModel> {
   const normalizedTaskType = normalizeTaskType(taskType);
   const base = DEFAULT_ROUTES[normalizedTaskType] ?? DEFAULT_ROUTES.default;
+  const userId = getCurrentUserId();
 
   try {
-    const row = await prisma.modelRouteConfig.findUnique({
-      where: { taskType: normalizedTaskType },
+    const own = await prisma.modelRouteConfig.findUnique({
+      where: { userId_taskType: { userId, taskType: normalizedTaskType } },
     });
+    const row = own ?? (userId === ADMIN_USER_ID
+      ? null
+      : await prisma.modelRouteConfig.findUnique({
+        where: { userId_taskType: { userId: ADMIN_USER_ID, taskType: normalizedTaskType } },
+      }));
     if (row) {
       const provider = normalizeProviderId(row.provider);
       const routePreferences = normalizeRoutePreferences({
@@ -315,10 +323,23 @@ export async function listModelRouteConfigs(): Promise<Array<{
   structuredResponseFormat: ModelRouteStructuredResponseFormat;
 }>> {
   try {
+    const userId = getCurrentUserId();
     const rows = await prisma.modelRouteConfig.findMany({
+      where: {
+        userId: userId === ADMIN_USER_ID ? ADMIN_USER_ID : { in: [ADMIN_USER_ID, userId] },
+      },
       orderBy: { taskType: "asc" },
     });
-    return rows.map((r) => {
+    const merged = new Map<string, typeof rows[number]>();
+    for (const row of rows) {
+      merged.set(row.taskType, row);
+    }
+    for (const row of rows) {
+      if (row.userId === userId) {
+        merged.set(row.taskType, row);
+      }
+    }
+    return Array.from(merged.values()).map((r) => {
       const provider = normalizeProviderId(r.provider);
       const routePreferences = normalizeRoutePreferences({
         requestProtocol: "requestProtocol" in r ? r.requestProtocol : null,
@@ -359,9 +380,11 @@ export async function upsertModelRouteConfig(
     requestProtocol: data.requestProtocol,
     structuredResponseFormat: data.structuredResponseFormat,
   });
+  const userId = getCurrentUserId();
   await prisma.modelRouteConfig.upsert({
-    where: { taskType: normalizedTaskType },
+    where: { userId_taskType: { userId, taskType: normalizedTaskType } },
     create: {
+      userId,
       taskType: normalizedTaskType,
       provider,
       model: data.model,

@@ -42,6 +42,7 @@ export type NovelListItem = Pick<
   | "primaryStoryModeId"
   | "secondaryStoryModeId"
   | "worldId"
+  | "owner"
   | "tokenUsage"
   | "createdAt"
   | "updatedAt"

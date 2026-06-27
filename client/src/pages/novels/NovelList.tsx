@@ -82,6 +82,10 @@ function formatTokenCount(value?: number | null): string {
   return new Intl.NumberFormat("zh-CN").format(normalized);
 }
 
+function formatNovelOwner(novel: { owner?: { username: string; displayName?: string | null } | null }): string {
+  return novel.owner?.displayName?.trim() || novel.owner?.username || "未知作者";
+}
+
 export default function NovelList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -409,7 +413,7 @@ export default function NovelList() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="text-xs text-muted-foreground">
-                    章节数：{novel._count.chapters}，角色数：{novel._count.characters}，累计 Token：{formatTokenCount(
+                    作者：{formatNovelOwner(novel)}，章节数：{novel._count.chapters}，角色数：{novel._count.characters}，累计 Token：{formatTokenCount(
                       novel.tokenUsage?.totalTokens,
                     )}
                   </div>

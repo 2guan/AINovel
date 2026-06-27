@@ -1,15 +1,18 @@
 import type { TaskKind } from "@ai-novel/shared/types/task";
+import { getCurrentUserId } from "../../auth/authContext";
 import { prisma } from "../../db/prisma";
 
 export async function archiveTask(taskKind: TaskKind, taskId: string): Promise<void> {
   await prisma.taskCenterArchive.upsert({
     where: {
-      taskKind_taskId: {
+      userId_taskKind_taskId: {
+        userId: getCurrentUserId(),
         taskKind,
         taskId,
       },
     },
     create: {
+      userId: getCurrentUserId(),
       taskKind,
       taskId,
     },
@@ -22,7 +25,8 @@ export async function archiveTask(taskKind: TaskKind, taskId: string): Promise<v
 export async function isTaskArchived(taskKind: TaskKind, taskId: string): Promise<boolean> {
   const row = await prisma.taskCenterArchive.findUnique({
     where: {
-      taskKind_taskId: {
+      userId_taskKind_taskId: {
+        userId: getCurrentUserId(),
         taskKind,
         taskId,
       },
