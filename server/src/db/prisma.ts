@@ -117,11 +117,31 @@ const scopedPrisma = new PrismaClient({
             return query(args);
           }
           const mutableArgs = args as Record<string, unknown>;
-          if (operation === "findMany" || operation === "findFirst" || operation === "count" || operation === "aggregate" || operation === "groupBy" || operation === "updateMany" || operation === "deleteMany") {
+          if (
+            operation === "findMany"
+            || operation === "findFirst"
+            || operation === "findUnique"
+            || operation === "findFirstOrThrow"
+            || operation === "findUniqueOrThrow"
+            || operation === "count"
+            || operation === "aggregate"
+            || operation === "groupBy"
+            || operation === "update"
+            || operation === "updateMany"
+            || operation === "delete"
+            || operation === "deleteMany"
+          ) {
             return query(withUserWhere(mutableArgs, userId));
           }
           if (operation === "create" || operation === "createMany") {
             return query(withUserData(mutableArgs, userId));
+          }
+          if (operation === "upsert") {
+            const scopedArgs = {
+              ...withUserWhere(mutableArgs, userId),
+              create: withUserData({ data: mutableArgs.create }, userId).data,
+            };
+            return query(scopedArgs as typeof args);
           }
           return query(args);
         },
