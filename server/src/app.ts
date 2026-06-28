@@ -120,7 +120,7 @@ export function createApp() {
   }));
   app.use(express.json({ limit: jsonBodyLimit }));
 
-  app.use("/api/health", healthRouter);
+  app.use(["/api/health", "/api//health"], healthRouter);
   app.use("/api/auth", authRouter);
   app.use("/api", authMiddleware);
   app.use("/api/admin/users", adminUsersRouter);
