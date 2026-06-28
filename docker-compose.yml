@@ -10,9 +10,9 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
       ALLOW_LAN: "true"
-      CORS_ORIGIN: http://localhost:8080,http://127.0.0.1:8080
+      CORS_ORIGIN: ${DOCKER_CORS_ORIGIN:-http://localhost:4002,http://127.0.0.1:4002}
     ports:
-      - "3000:3000"
+      - "${DOCKER_API_PORT:-4001}:3000"
     volumes:
       - ai-novel-storage:/app/storage
 
@@ -21,11 +21,11 @@ services:
       context: .
       dockerfile: Dockerfile.web
       args:
-        VITE_API_BASE_URL: http://localhost:3000/api
+        VITE_API_BASE_URL: ${DOCKER_VITE_API_BASE_URL:-http://localhost:4001/api}
     depends_on:
       - api
     ports:
-      - "8080:8080"
+      - "${DOCKER_WEB_PORT:-4002}:8080"
 
 volumes:
   ai-novel-storage:
