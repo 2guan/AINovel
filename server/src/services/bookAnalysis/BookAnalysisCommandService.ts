@@ -5,6 +5,7 @@ import type {
 } from "@ai-novel/shared/types/bookAnalysis";
 import { BOOK_ANALYSIS_SECTIONS } from "@ai-novel/shared/types/bookAnalysis";
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
+import { resolveBookAnalysisOwnerUserId } from "../../auth/resourceOwnerContext";
 import { runWithUserIdContext } from "../../auth/runWithUserContext";
 import { prisma } from "../../db/prisma";
 import { AppError } from "../../middleware/errorHandler";
@@ -30,11 +31,8 @@ export class BookAnalysisCommandService {
   private readonly taskQueue = new BookAnalysisTaskQueue({
     getMaxConcurrentTasks: getBookAnalysisMaxConcurrentTasks,
     onRunTask: async (task) => {
-      const owner = await prisma.bookAnalysis.findUnique({
-        where: { id: task.analysisId },
-        select: { userId: true },
-      });
-      await runWithUserIdContext(owner?.userId, async () => {
+      const ownerUserId = await resolveBookAnalysisOwnerUserId(task.analysisId);
+      await runWithUserIdContext(ownerUserId, async () => {
         await this.queryService.ensureAnalysisSections(task.analysisId);
         if (task.kind === "full") {
           await this.generationService.runFullAnalysis(task.analysisId);

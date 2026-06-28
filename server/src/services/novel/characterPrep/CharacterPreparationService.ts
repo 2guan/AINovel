@@ -13,6 +13,7 @@ import type {
   SupplementalCharacterGenerationResult,
 } from "@ai-novel/shared/types/novel";
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
+import { runWithNovelOwnerContext } from "../../../auth/resourceOwnerContext";
 import { prisma } from "../../../db/prisma";
 import { runStructuredPrompt } from "../../../prompting/core/promptRunner";
 import { buildCharacterCastContextBlocks } from "../../../prompting/prompts/novel/characterPreparation.contextBlocks";
@@ -759,7 +760,7 @@ export class CharacterPreparationService {
       visibleProfileGeneration: options.visibleProfileGeneration,
     };
     if (options.postApplyMode === "background") {
-      void this.runPostApplyEnhancements(postApplyInput).catch((error) => {
+      void runWithNovelOwnerContext(novelId, () => this.runPostApplyEnhancements(postApplyInput)).catch((error) => {
         console.warn("[character-cast-apply] 阵容应用后台补齐任务失败", {
           novelId,
           optionId: option.id,

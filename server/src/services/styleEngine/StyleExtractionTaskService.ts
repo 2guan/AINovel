@@ -5,6 +5,7 @@ import type {
   StyleExtractionSourceProcessingMode,
   StyleFeatureDecision,
 } from "@ai-novel/shared/types/styleEngine";
+import { resolveStyleExtractionTaskOwnerUserId } from "../../auth/resourceOwnerContext";
 import { runWithUserIdContext } from "../../auth/runWithUserContext";
 import { prisma } from "../../db/prisma";
 import { runWithLlmUsageTracking } from "../../llm/usageTracking";
@@ -400,11 +401,8 @@ export class StyleExtractionTaskService {
           continue;
         }
         this.queueSet.delete(taskId);
-        const owner = await prisma.styleExtractionTask.findUnique({
-          where: { id: taskId },
-          select: { userId: true },
-        });
-        await runWithUserIdContext(owner?.userId, () => this.executeTask(taskId));
+        const ownerUserId = await resolveStyleExtractionTaskOwnerUserId(taskId);
+        await runWithUserIdContext(ownerUserId, () => this.executeTask(taskId));
       }
     } finally {
       this.processing = false;

@@ -1,4 +1,6 @@
 import os from "node:os";
+import { resolveNovelSideEffectJobOwnerUserId } from "../../auth/resourceOwnerContext";
+import { runWithUserIdContext } from "../../auth/runWithUserContext";
 import { NovelSideEffectJobService, novelSideEffectJobService } from "./NovelSideEffectJobService";
 import {
   NovelSideEffectJobHandlers,
@@ -71,7 +73,8 @@ export class NovelSideEffectWorker {
         return;
       }
       try {
-        await this.handlers.execute(job);
+        const ownerUserId = await resolveNovelSideEffectJobOwnerUserId(job.id);
+        await runWithUserIdContext(ownerUserId, () => this.handlers.execute(job));
         await this.jobService.markSucceeded(job);
       } catch (error) {
         const forceDead = error instanceof UnsupportedNovelSideEffectPayloadError;
@@ -84,4 +87,3 @@ export class NovelSideEffectWorker {
 }
 
 export const novelSideEffectWorker = new NovelSideEffectWorker();
-

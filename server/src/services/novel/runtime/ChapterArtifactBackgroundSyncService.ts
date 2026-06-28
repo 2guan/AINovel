@@ -1,4 +1,5 @@
 import { prisma } from "../../../db/prisma";
+import { runWithNovelOwnerContext } from "../../../auth/resourceOwnerContext";
 import { payoffLedgerSyncService } from "../../payoff/PayoffLedgerSyncService";
 import {
   parsePipelinePayload,
@@ -45,7 +46,7 @@ export class ChapterArtifactBackgroundSyncService {
     const artifactSyncMode = options.artifactSyncMode ?? DEFAULT_ARTIFACT_SYNC_MODE;
     const delayMs = artifactSyncMode === "deferred" ? DEFERRED_SYNC_DELAY_MS : 0;
     const run = () => {
-      void this.runChapterSyncNow(novelId, chapterId, content, { artifactSyncMode });
+      void runWithNovelOwnerContext(novelId, () => this.runChapterSyncNow(novelId, chapterId, content, { artifactSyncMode }));
     };
     if (delayMs > 0) {
       setTimeout(run, delayMs).unref?.();

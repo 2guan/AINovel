@@ -1,5 +1,7 @@
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
 
+import { resolveDramaBatchJobOwnerUserId } from "../../../auth/resourceOwnerContext";
+import { runWithUserIdContext } from "../../../auth/runWithUserContext";
 import { prisma } from "../../../db/prisma";
 import { AppError } from "../../../middleware/errorHandler";
 import { safeJsonParse } from "../utils/json";
@@ -245,6 +247,11 @@ export class DramaBatchOrchestrator {
   }
 
   async runBatchJob(jobId: string) {
+    const ownerUserId = await resolveDramaBatchJobOwnerUserId(jobId);
+    return runWithUserIdContext(ownerUserId, () => this.runBatchJobInOwnerContext(jobId));
+  }
+
+  private async runBatchJobInOwnerContext(jobId: string) {
     if (this.runningJobs.has(jobId)) {
       return prisma.dramaBatchJob.findUnique({ where: { id: jobId } });
     }

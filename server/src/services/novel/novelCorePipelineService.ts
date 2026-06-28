@@ -1,5 +1,6 @@
 import type { ReviewIssue } from "@ai-novel/shared/types/novel";
 import type { Prisma } from "@prisma/client";
+import { resolveGenerationJobOwnerUserId } from "../../auth/resourceOwnerContext";
 import { runWithUserIdContext } from "../../auth/runWithUserContext";
 import { prisma } from "../../db/prisma";
 import { novelEventBus } from "../../events";
@@ -557,11 +558,8 @@ export class NovelCorePipelineService {
     }
     NovelCorePipelineService.activeJobIds.add(jobId);
     void (async () => {
-      const owner = await prisma.generationJob.findUnique({
-        where: { id: jobId },
-        select: { userId: true },
-      });
-      await runWithUserIdContext(owner?.userId, () => this.executePipeline(jobId, novelId, options));
+      const ownerUserId = await resolveGenerationJobOwnerUserId(jobId);
+      await runWithUserIdContext(ownerUserId, () => this.executePipeline(jobId, novelId, options));
     })()
       .catch(() => {
         // 防止后台任务未处理拒绝导致进程不稳定

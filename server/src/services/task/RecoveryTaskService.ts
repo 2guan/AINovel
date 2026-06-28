@@ -3,6 +3,14 @@ import type {
   RecoverableTaskSummary,
   TaskKind,
 } from "@ai-novel/shared/types/task";
+import {
+  resolveBookAnalysisOwnerUserId,
+  resolveGenerationJobOwnerUserId,
+  resolveImageGenerationTaskOwnerUserId,
+  resolveStyleExtractionTaskOwnerUserId,
+  resolveWorkflowTaskOwnerUserId,
+} from "../../auth/resourceOwnerContext";
+import { runWithUserIdContext } from "../../auth/runWithUserContext";
 import { prisma } from "../../db/prisma";
 import { AppError } from "../../middleware/errorHandler";
 import { bookAnalysisService } from "../bookAnalysis/BookAnalysisService";
@@ -284,6 +292,11 @@ export class RecoveryTaskService {
 
   async resumeRecoveryCandidate(kind: TaskKind, id: string): Promise<unknown> {
     await this.waitUntilReady();
+    const ownerUserId = await this.resolveRecoveryOwnerUserId(kind, id);
+    return runWithUserIdContext(ownerUserId, () => this.resumeRecoveryCandidateInOwnerContext(kind, id));
+  }
+
+  private async resumeRecoveryCandidateInOwnerContext(kind: TaskKind, id: string): Promise<unknown> {
     if (kind === "novel_workflow") {
       return this.resumeAutoDirectorWorkflow(id);
     }
@@ -308,9 +321,10 @@ export class RecoveryTaskService {
 
   async startResumeRecoveryCandidate(kind: TaskKind, id: string): Promise<unknown> {
     await this.waitUntilReady();
+    const ownerUserId = await this.resolveRecoveryOwnerUserId(kind, id);
     if (kind === "novel_workflow") {
       if (this.directorCommandService.enqueueRecoveryCommand) {
-        return this.directorCommandService.enqueueRecoveryCommand(id);
+        return runWithUserIdContext(ownerUserId, () => this.directorCommandService.enqueueRecoveryCommand!(id));
       }
       this.scheduleAutoDirectorRecovery(id);
       return null;
@@ -380,13 +394,26 @@ export class RecoveryTaskService {
   }
 
   private scheduleAutoDirectorRecovery(id: string): void {
-    if (this.directorCommandService.enqueueRecoveryCommand) {
-      void this.directorCommandService.enqueueRecoveryCommand(id).catch((error) => {
-        console.error(`[recovery] auto director command enqueue failed: novel_workflow/${id}`, error);
-      });
-      return;
-    }
     this.scheduleRecoveryResume("novel_workflow", id);
+  }
+
+  private async resolveRecoveryOwnerUserId(kind: TaskKind, id: string): Promise<string | null> {
+    if (kind === "novel_workflow") {
+      return resolveWorkflowTaskOwnerUserId(id);
+    }
+    if (kind === "novel_pipeline") {
+      return resolveGenerationJobOwnerUserId(id);
+    }
+    if (kind === "book_analysis") {
+      return resolveBookAnalysisOwnerUserId(id);
+    }
+    if (kind === "image_generation") {
+      return resolveImageGenerationTaskOwnerUserId(id);
+    }
+    if (kind === "style_extraction") {
+      return resolveStyleExtractionTaskOwnerUserId(id);
+    }
+    return null;
   }
 }
 

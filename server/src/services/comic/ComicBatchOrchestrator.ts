@@ -1,4 +1,6 @@
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
+import { resolveComicBatchJobOwnerUserId } from "../../auth/resourceOwnerContext";
+import { runWithUserIdContext } from "../../auth/runWithUserContext";
 import { prisma } from "../../db/prisma";
 import { AppError } from "../../middleware/errorHandler";
 import { comicPanelImageService } from "./ComicPanelImageService";
@@ -97,6 +99,16 @@ export class ComicBatchOrchestrator {
   }
 
   private async _runBatch(
+    jobId: string,
+    panelIds: string[],
+    provider: LLMProvider,
+    concurrency: number,
+  ): Promise<void> {
+    const ownerUserId = await resolveComicBatchJobOwnerUserId(jobId);
+    return runWithUserIdContext(ownerUserId, () => this.runBatchInOwnerContext(jobId, panelIds, provider, concurrency));
+  }
+
+  private async runBatchInOwnerContext(
     jobId: string,
     panelIds: string[],
     provider: LLMProvider,

@@ -2,9 +2,9 @@ import "dotenv/config";
 import { ensureRuntimeDatabaseReady } from "../db/runtimeMigrations";
 import { loadProviderApiKeys } from "../llm/factory";
 import { runWithUserIdContext } from "../auth/runWithUserContext";
+import { resolveWorkflowTaskOwnerUserId } from "../auth/resourceOwnerContext";
 import { initializeRagSettingsCompatibility } from "../services/settings/RagCompatibilityBootstrapService";
 import { DirectorCommandExecutor } from "../services/novel/director/commands/DirectorCommandExecutor";
-import { resolveWorkflowTaskOwnerUserId } from "../services/novel/workflow/runtime/NovelWorkflowTaskOwnerContext";
 import { DirectorTaskQueue, type DirectorTaskQueueOptions } from "./DirectorTaskQueue";
 import { taskDispatcher } from "./TaskDispatcher";
 

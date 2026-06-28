@@ -39,7 +39,7 @@ import { novelFramingSuggestionService } from "../NovelFramingSuggestionService"
 import { StoryMacroPlanService } from "../storyMacro/StoryMacroPlanService";
 import { NovelVolumeService } from "../volume/NovelVolumeService";
 import { NovelWorkflowService } from "../workflow/NovelWorkflowService";
-import { runWithWorkflowTaskOwnerContext } from "../workflow/runtime/NovelWorkflowTaskOwnerContext";
+import { runWithWorkflowTaskOwnerContext } from "../../../auth/resourceOwnerContext";
 import { NovelDirectorCandidateStageService } from "./phases/novelDirectorCandidateStage";
 import { resolveDirectorBookFraming } from "./runtime/novelDirectorFraming";
 import {
