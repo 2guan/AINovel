@@ -38,6 +38,16 @@ test("chapter budgets ignore incomplete prefix-only generated chapters", () => {
   assert.ok(budgets[1] <= 60, `expected second volume budget near an even split, got ${budgets[1]}`);
 });
 
+test("chapter budgets preserve short-form chapter targets", () => {
+  const budgets = allocateChapterBudgets({
+    volumeCount: 1,
+    chapterBudget: 3,
+    existingVolumes: [],
+  });
+
+  assert.deepEqual(budgets, [3]);
+});
+
 test("beat sheet target chapter count is not shrunk by partial seed chapters", () => {
   const targetChapterCount = resolveBeatSheetTargetChapterCount({
     targetVolumeChapterCount: 10,

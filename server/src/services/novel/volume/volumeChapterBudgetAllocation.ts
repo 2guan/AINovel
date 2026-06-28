@@ -15,7 +15,7 @@ export function deriveChapterBudget(params: {
     options.estimatedChapterCount ?? 0,
     novel.estimatedChapterCount ?? 0,
     workspace.volumes.flatMap((volume) => volume.chapters).length,
-    12,
+    1,
   );
 }
 
@@ -45,7 +45,7 @@ export function allocateChapterBudgets(params: {
 }): number[] {
   const { volumeCount, chapterBudget, existingVolumes } = params;
   const safeVolumeCount = Math.max(volumeCount, 1);
-  const minimumPerVolume = 3;
+  const minimumPerVolume = 1;
   const totalBudget = Math.max(chapterBudget, safeVolumeCount * minimumPerVolume);
   const existingCounts = Array.from(
     { length: safeVolumeCount },

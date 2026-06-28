@@ -234,6 +234,38 @@ test("volume beat sheet schema normalizes alias fields and wrapped payloads", ()
   assert.equal(parsed.beats[2].label, "中段转向");
 });
 
+test("volume beat sheet schema accepts compact short-form beat sheets", () => {
+  const schema = createVolumeBeatSheetSchema();
+  const parsed = schema.parse({
+    beats: [
+      {
+        key: "open_hook",
+        label: "开篇入局",
+        summary: "用核心困境和选择把故事拉开。",
+        chapterSpanHint: "1章",
+        mustDeliver: ["核心困境", "主角选择"],
+      },
+      {
+        key: "turn_and_pressure",
+        label: "转向加压",
+        summary: "把局面推到无法回避的代价点。",
+        chapterSpanHint: "2章",
+        mustDeliver: ["局面转向", "代价抬高"],
+      },
+      {
+        key: "climax_close",
+        label: "兑现收束",
+        summary: "完成主要承诺，并给出短篇闭环。",
+        chapterSpanHint: "3章",
+        mustDeliver: ["承诺兑现", "结局余味"],
+      },
+    ],
+  });
+
+  assert.equal(parsed.beats.length, 3);
+  assert.equal(parsed.beats[2].chapterSpanHint, "3章");
+});
+
 test("volume chapter beat block schema normalizes beat aliases and enforces beat ownership", () => {
   const schema = createVolumeChapterBeatBlockSchema({
     exactChapterCount: 2,
@@ -402,6 +434,45 @@ test("volume beat sheet prompt render includes explicit JSON field contract", ()
   assert.match(systemPrompt, /5-8/);
   assert.match(systemPrompt, /Current volume target chapter count: 18/);
   assert.match(systemPrompt, /volume-local numbering only/);
+});
+
+test("volume beat sheet prompt render uses compact rhythm rules for short targets", () => {
+  const messages = volumeBeatSheetPrompt.render({
+    novel: {},
+    workspace: {
+      volumes: [],
+      strategyPlan: null,
+      critiqueReport: null,
+      beatSheets: [],
+      rebalanceDecisions: [],
+      readiness: {
+        canGenerateStrategy: true,
+        canGenerateSkeleton: false,
+        canGenerateBeatSheet: false,
+        canGenerateChapterList: false,
+        blockingReasons: [],
+      },
+      derivedOutline: "",
+      derivedStructuredOutline: "",
+      source: "empty",
+      activeVersionId: null,
+    },
+    storyMacroPlan: null,
+    strategyPlan: null,
+    targetVolume: createVolume(1),
+    targetChapterCount: 3,
+  }, {
+    blocks: [],
+    selectedBlockIds: [],
+    droppedBlockIds: [],
+    summarizedBlockIds: [],
+    estimatedInputTokens: 0,
+  });
+
+  const systemPrompt = String(messages[0].content);
+  assert.match(systemPrompt, /beats 必须输出 1-3 条/);
+  assert.match(systemPrompt, /不得为了凑“中段转向、高潮前挤压、卷尾钩子”而把 3 章短篇拉成长篇结构/);
+  assert.doesNotMatch(systemPrompt, /beats 必须输出 5-8 条/);
 });
 
 test("volume beat sheet context blocks include the current volume chapter target", () => {

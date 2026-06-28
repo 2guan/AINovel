@@ -119,9 +119,12 @@ export function validateBeatSheetChapterCoverage(input: {
   const requiredChapterCount = inferRequiredChapterCountFromBeatSheet(input.beatSheet);
   const continuousChapterCount = inferContinuousChapterCoverageFromBeatSheet(input.beatSheet);
   const plannedChapterCount = sumBeatSheetChapterSpanCounts(input.beatSheet);
+  const defaultToleranceChapterCount = targetChapterCount <= 5
+    ? 0
+    : Math.max(2, Math.ceil(targetChapterCount * 0.08));
   const toleranceChapterCount = Math.max(
-    2,
-    Math.round(input.toleranceChapterCount ?? Math.max(1, Math.ceil(targetChapterCount * 0.08))),
+    0,
+    Math.round(input.toleranceChapterCount ?? defaultToleranceChapterCount),
   );
   const minTrustedChapterCount = Math.max(1, targetChapterCount - toleranceChapterCount);
   const maxTrustedChapterCount = targetChapterCount + toleranceChapterCount;

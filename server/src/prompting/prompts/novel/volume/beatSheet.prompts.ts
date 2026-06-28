@@ -29,8 +29,38 @@ export const volumeBeatSheetPrompt: PromptAsset<
     maxAttempts: 1,
   },
   outputSchema: createVolumeBeatSheetSchema(),
-  render: (input, context) => [
-    new SystemMessage([
+  render: (input, context) => {
+    const targetChapterCount = Math.max(1, Math.round(input.targetChapterCount || 1));
+    const isMicroVolume = targetChapterCount <= 3;
+    const isShortVolume = targetChapterCount <= 5;
+    const beatCountRule = isMicroVolume
+      ? `1. beats 必须输出 1-${targetChapterCount} 条，优先让每个 beat 对应 1 章或一段连续章节，不得为了凑长篇节奏扩写 beat。`
+      : isShortVolume
+        ? "1. beats 必须输出 2-4 条，优先使用紧凑节奏，不得为了凑 5-8 条而拆碎。"
+        : "1. beats 必须输出 5-8 条。";
+    const rhythmCoverageRule = isMicroVolume
+      ? "6. 短篇卷只需覆盖目标章数内必要职责，可把开篇抓手、转向、高潮、收束合并在同一 beat 或同一章内；不得为了凑“中段转向、高潮前挤压、卷尾钩子”而把 3 章短篇拉成长篇结构。"
+      : isShortVolume
+        ? "6. 短篇卷应压缩节奏职责，可合并开卷抓手、第一次升级、中段转向、高潮与收束；不得机械套用六段式长篇节奏。"
+        : "6. beats 必须至少覆盖：开卷抓手、第一次升级或反制、中段转向、高潮前挤压、卷高潮、卷尾钩子。";
+    const pressureRule = isShortVolume
+      ? "8. 短篇卷可以把高潮前挤压、卷高潮和收束写在相邻或同一 beat 中，但必须保持清晰兑现，不要制造超出目标章数的额外后续线。"
+      : "8. 不要把高潮前挤压写成提前高潮，也不要把卷尾钩子写成泛泛留白。";
+    const skeletonMiddleRule = isShortVolume
+      ? "3. 短篇卷可以把 midVolumeRisk 压缩为同一 beat 内的局面转向或代价升级，不要虚构独立中段走向。"
+      : "3. 中段必须体现 midVolumeRisk 或等价的局面转向，不能只是线性加码。";
+    const endingRule = isShortVolume
+      ? "5. 如果没有下一卷，结尾 beat 应完成本卷收束；如存在 nextVolumeHook，也只能作为轻量余波，不得变成额外卷级入口。"
+      : "5. 结尾 beat 必须承接 nextVolumeHook，并通过 resetPoint 或残局重组形成下一卷入口。";
+    const rhythmQualityRule = isShortVolume
+      ? "3. 节奏上要按目标章数压缩完成抓手、选择、转向、兑现与收束；目标只有 1-3 章时，不需要单独拆出中段走向。"
+      : "3. 节奏上要体现前段立钩子与承诺，中段换挡与抬代价，后段挤压与兑现，结尾留入口。";
+    const shortVolumeOutputRule = isShortVolume
+      ? "- 这是短篇/短卷目标，允许合并节奏职责；不得输出长篇六段式节奏，也不得让章节跨度超过目标章数"
+      : "- 长篇卷需要覆盖开卷、升级、中段转向、高潮前挤压、卷高潮与卷尾入口";
+
+    return [
+      new SystemMessage([
       "你是网文单卷节奏规划助手。",
       "你的任务不是写章节目录，也不是扩写剧情梗概，而是把“卷骨架”转成可供后续拆章使用的 beat sheet。",
       "beat 是卷内一个阶段性的节奏任务单元，代表一段章节范围内最主要的推进职责、阅读功能与必须兑现的内容。",
@@ -54,27 +84,27 @@ export const volumeBeatSheetPrompt: PromptAsset<
       "}",
       "",
       "【硬性要求】",
-      "1. beats 必须输出 5-8 条。",
+      beatCountRule,
       "2. 每个 beat 都必须完整包含 key、label、summary、chapterSpanHint、mustDeliver 五个字段，不能缺漏、不能改名。",
       "3. summary 必须写清：这一拍推进了什么、承担什么节奏职责、与卷骨架中的哪类承诺或压力相关。",
       "4. chapterSpanHint 必须是非空字符串，使用类似“1-2章”“3章”“7-8章”的表达。",
       "5. mustDeliver 必须是 1-6 条非空字符串，优先写必须兑现的局面、信号、压力、转向、读者感知，不要只写抽象口号。",
-      "6. beats 必须至少覆盖：开卷抓手、第一次升级或反制、中段转向、高潮前挤压、卷高潮、卷尾钩子。",
+      rhythmCoverageRule,
       "7. 各 beat 的节奏职责必须有差异，不能把多个 beat 都写成‘冲突升级’或‘继续推进’。",
-      "8. 不要把高潮前挤压写成提前高潮，也不要把卷尾钩子写成泛泛留白。",
+      pressureRule,
       `9. 所有 chapterSpanHint 必须从第 1 章连续覆盖到第 ${input.targetChapterCount} 章附近，不能只覆盖少量开头章节。`,
       "",
       "【卷骨架承接要求】",
       "1. 开头相关 beat 必须承接 target_volume 中的 openingHook 与 mainPromise。",
       "2. 前中段 beats 必须逐步体现 primaryPressureSource 与 escalationMode。",
-      "3. 中段必须体现 midVolumeRisk 或等价的局面转向，不能只是线性加码。",
+      skeletonMiddleRule,
       "4. climax beat 必须承接卷高潮承诺，形成明确兑现。",
-      "5. 结尾 beat 必须承接 nextVolumeHook，并通过 resetPoint 或残局重组形成下一卷入口。",
+      endingRule,
       "",
       "【质量要求】",
       "1. 每个 beat 都要回答：这一段章节为什么必须存在。",
       "2. 相邻 beat 要形成递进或转向关系，而不是同义重复。",
-      "3. 节奏上要体现前段立钩子与承诺，中段换挡与抬代价，后段挤压与兑现，结尾留入口。",
+      rhythmQualityRule,
       "4. 信息不足时也必须给出完整字段，但应保守，不要发明脱离上下文的大设定。",
       "",
       "【建议 key】",
@@ -90,6 +120,7 @@ export const volumeBeatSheetPrompt: PromptAsset<
       "- 不补充 schema 之外字段",
       "- beats 是节奏任务分段，不是章节目录",
       "- 优先保证与卷骨架承接关系清晰、节奏职责明确、后续可拆章",
+      shortVolumeOutputRule,
       "",
       "【当前卷节奏板上下文】",
       `- Current volume target chapter count: ${input.targetChapterCount}`,
@@ -98,7 +129,8 @@ export const volumeBeatSheetPrompt: PromptAsset<
       "",
       renderSelectedContextBlocks(context),
     ].join("\n")),
-  ],
+    ];
+  },
   postValidate: (output, input) => {
     const coverage = validateBeatSheetChapterCoverage({
       beatSheet: output,

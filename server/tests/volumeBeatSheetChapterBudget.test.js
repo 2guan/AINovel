@@ -96,6 +96,38 @@ test("validateBeatSheetChapterCoverage accepts complete contiguous target covera
   assert.equal(result.requiredChapterCount, 54);
 });
 
+test("validateBeatSheetChapterCoverage requires exact coverage for short chapter targets", () => {
+  const incompleteBeatSheet = {
+    beats: [
+      { chapterSpanHint: "1章" },
+      { chapterSpanHint: "2章" },
+    ],
+  };
+
+  const incompleteResult = validateBeatSheetChapterCoverage({
+    beatSheet: incompleteBeatSheet,
+    targetChapterCount: 3,
+  });
+
+  assert.equal(incompleteResult.accepted, false);
+  assert.equal(incompleteResult.requiredChapterCount, 2);
+
+  const completeResult = validateBeatSheetChapterCoverage({
+    beatSheet: {
+      beats: [
+        { chapterSpanHint: "1章" },
+        { chapterSpanHint: "2章" },
+        { chapterSpanHint: "3章" },
+      ],
+    },
+    targetChapterCount: 3,
+  });
+
+  assert.equal(completeResult.accepted, true);
+  assert.equal(completeResult.requiredChapterCount, 3);
+  assert.equal(completeResult.plannedChapterCount, 3);
+});
+
 test("validateBeatSheetChapterCoverage rejects disconnected spans that only jump to the target", () => {
   const beatSheet = {
     beats: [
