@@ -60,7 +60,6 @@ const moreNavGroups: MobileNavGroup[] = [
   {
     title: "创作辅助",
     items: [
-      { key: "drama", label: "短剧工作台", to: "/drama", group: "creation" },
       { key: "book-analysis", label: "拆书", to: "/book-analysis", group: "creation" },
       { key: "auto-director-follow-ups", label: "导演跟进", to: "/auto-director/follow-ups", group: "tasks" },
       { key: "chat-legacy", label: "旧版聊天", to: "/chat-legacy", group: "creation" },

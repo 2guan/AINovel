@@ -39,6 +39,7 @@ import { novelFramingSuggestionService } from "../NovelFramingSuggestionService"
 import { StoryMacroPlanService } from "../storyMacro/StoryMacroPlanService";
 import { NovelVolumeService } from "../volume/NovelVolumeService";
 import { NovelWorkflowService } from "../workflow/NovelWorkflowService";
+import { runWithWorkflowTaskOwnerContext } from "../workflow/runtime/NovelWorkflowTaskOwnerContext";
 import { NovelDirectorCandidateStageService } from "./phases/novelDirectorCandidateStage";
 import { resolveDirectorBookFraming } from "./runtime/novelDirectorFraming";
 import {
@@ -225,16 +226,18 @@ export class NovelDirectorService {
 
   private async runScheduledBackgroundRun(taskId: string, runner: () => Promise<void>): Promise<void> {
     try {
-      await runWithLlmUsageTracking(
-        await this.buildDirectorUsageContext(taskId),
-        runner,
-      );
+      await runWithWorkflowTaskOwnerContext(taskId, async () => {
+        await runWithLlmUsageTracking(
+          await this.buildDirectorUsageContext(taskId),
+          runner,
+        );
+      });
     } catch (error) {
       if (isWorkflowTaskCancelledError(error) || isDirectorRuntimeGateError(error)) {
         return;
       }
       const message = error instanceof Error ? error.message : "自动导演后台任务执行失败。";
-      await this.workflowService.markTaskFailed(taskId, message);
+      await runWithWorkflowTaskOwnerContext(taskId, () => this.workflowService.markTaskFailed(taskId, message));
       console.error(`[director.background] task failed taskId=${taskId}`, error);
     } finally {
       await releaseHighMemoryDirectorReservations(taskId);
@@ -246,8 +249,10 @@ export class NovelDirectorService {
     if (!normalizedTaskId) {
       return runner();
     }
-    return this.buildDirectorUsageContext(normalizedTaskId)
-      .then((context) => runWithLlmUsageTracking(context, runner));
+    return runWithWorkflowTaskOwnerContext(normalizedTaskId, async () => {
+      const context = await this.buildDirectorUsageContext(normalizedTaskId);
+      return runWithLlmUsageTracking(context, runner);
+    });
   }
 
   private async buildDirectorUsageContext(taskId: string): Promise<LlmUsageTrackingContext> {
