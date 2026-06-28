@@ -52,7 +52,7 @@ export function formatProjectContext(input: DirectorProjectContextInput): string
     input.targetAudience?.trim() ? `target audience: ${input.targetAudience.trim()}` : "",
     input.bookSellingPoint?.trim() ? `book selling point: ${input.bookSellingPoint.trim()}` : "",
     input.competingFeel?.trim() ? `competing feel: ${input.competingFeel.trim()}` : "",
-    input.first30ChapterPromise?.trim() ? `first 30 chapter promise: ${input.first30ChapterPromise.trim()}` : "",
+    input.first30ChapterPromise?.trim() ? `first 30% payoff promise: ${input.first30ChapterPromise.trim()}` : "",
     input.commercialTags && input.commercialTags.length > 0
       ? `commercial tags: ${input.commercialTags.join(", ")}`
       : "",

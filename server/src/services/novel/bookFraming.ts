@@ -23,6 +23,6 @@ export function buildBookFramingSummary(source: BookFramingSource): string {
     commercialTags.length > 0 ? `核心商业标签：${commercialTags.join("、")}` : "",
     source.bookSellingPoint?.trim() ? `本书核心卖点：${source.bookSellingPoint.trim()}` : "",
     source.competingFeel?.trim() ? `竞品感 / 熟悉阅读感：${source.competingFeel.trim()}` : "",
-    source.first30ChapterPromise?.trim() ? `前 30 章承诺：${source.first30ChapterPromise.trim()}` : "",
+    source.first30ChapterPromise?.trim() ? `前 30% 兑现：${source.first30ChapterPromise.trim()}` : "",
   ].filter(Boolean).join("\n");
 }

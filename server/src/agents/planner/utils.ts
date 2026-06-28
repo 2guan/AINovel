@@ -430,7 +430,7 @@ export function normalizeIntentPayload(raw: unknown, input: PlannerInput): Recor
   } else if (typeof rawTargetChapterCount === "number" && Number.isFinite(rawTargetChapterCount)) {
     normalized.targetChapterCount = Math.max(1, Math.floor(rawTargetChapterCount));
   } else if (normalized.intent === "produce_novel") {
-    normalized.targetChapterCount = 20;
+    normalized.targetChapterCount = 12;
   } else {
     delete normalized.targetChapterCount;
   }

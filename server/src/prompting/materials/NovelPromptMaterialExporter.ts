@@ -213,7 +213,7 @@ export class NovelPromptMaterialExporter {
         novel.genre?.name ? `题材：${novel.genre.name}` : null,
         novel.targetAudience ? `目标读者：${novel.targetAudience}` : null,
         novel.bookSellingPoint ? `核心卖点：${novel.bookSellingPoint}` : null,
-        novel.first30ChapterPromise ? `前 30 章承诺：${novel.first30ChapterPromise}` : null,
+        novel.first30ChapterPromise ? `前 30% 兑现：${novel.first30ChapterPromise}` : null,
         novel.estimatedChapterCount ? `预计章节数：${novel.estimatedChapterCount}` : null,
         novel.defaultChapterLength ? `默认章节长度：${novel.defaultChapterLength}` : null,
         novel.primaryStoryMode?.name ? `主推进模式：${novel.primaryStoryMode.name}` : null,
@@ -247,7 +247,7 @@ export class NovelPromptMaterialExporter {
         contract?.escalationLadder ? `升级阶梯：${contract.escalationLadder}` : null,
         contract?.chapter3Payoff ? `第 3 章回报：${contract.chapter3Payoff}` : null,
         contract?.chapter10Payoff ? `第 10 章回报：${contract.chapter10Payoff}` : null,
-        contract?.chapter30Payoff ? `第 30 章回报：${contract.chapter30Payoff}` : null,
+        contract?.chapter30Payoff ? `前 30% 回报：${contract.chapter30Payoff}` : null,
         contract?.absoluteRedLinesJson ? `绝对红线：\n${jsonArrayPreview(contract.absoluteRedLinesJson)}` : null,
         novel.storyMacroPlan?.storyInput ? `故事输入：${novel.storyMacroPlan.storyInput}` : null,
         novel.storyMacroPlan?.decompositionJson

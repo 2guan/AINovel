@@ -18,7 +18,7 @@ export function BookFramingSection(props: BookFramingSectionProps) {
         <div>
           <div className="text-sm font-semibold text-foreground">书级 framing</div>
           <div className="mt-1 text-sm leading-6 text-muted-foreground">
-            用最直白的话说清楚：这本书写给谁、卖点是什么、读者前 30 章会得到什么。不会写专业策划词也没关系，按你的直觉描述即可。
+            用最直白的话说清楚：这本书写给谁、卖点是什么、读者在全书前 30% 会得到什么。不会写专业策划词也没关系，按你的直觉描述即可。
           </div>
         </div>
         {quickFill ? <div className="shrink-0">{quickFill}</div> : null}
@@ -78,14 +78,14 @@ export function BookFramingSection(props: BookFramingSectionProps) {
 
       <div className="mt-3 space-y-2">
         <FieldLabel htmlFor="basic-first30-promise" hint={BASIC_INFO_FIELD_HINTS.first30ChapterPromise}>
-          前 30 章承诺
+          前 30% 兑现
         </FieldLabel>
         <textarea
           id="basic-first30-promise"
           rows={5}
           className="min-h-[128px] w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
           value={basicForm.first30ChapterPromise}
-          placeholder="例如：前 30 章必须让读者看到主角站稳第一阶段立场、核心对手浮出水面、关系线第一次强反转，并明确这本书后面会越写越狠。"
+          placeholder="例如：前 30% 必须让读者看到主角站稳第一阶段立场、核心对手浮出水面、关系线第一次强反转，并明确这本书后面会越写越狠。"
           onChange={(event) => onFormChange({ first30ChapterPromise: event.target.value })}
         />
       </div>

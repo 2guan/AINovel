@@ -246,7 +246,7 @@ export class NovelProductionService {
     novelId: string;
     targetChapterCount?: number;
   } & NovelLlmOptions) {
-    const targetChapterCount = input.targetChapterCount ?? 20;
+    const targetChapterCount = input.targetChapterCount ?? 12;
     const { stream, onDone } = await this.novelService.createStructuredOutlineStream(input.novelId, {
       provider: input.provider,
       model: input.model,

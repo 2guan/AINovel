@@ -125,7 +125,7 @@ export function useNovelVolumePlanning({
   const [forceSystemRecommendedVolumeCount, setForceSystemRecommendedVolumeCount] = useState(false);
   const volumeCountGuidance = useMemo<VolumeCountGuidance>(
     () => buildVolumeCountGuidance({
-      chapterBudget: Math.max(estimatedChapterCount ?? 0, currentChapterCount, 12),
+      chapterBudget: Math.max(estimatedChapterCount ?? 0, currentChapterCount, 1),
       existingVolumeCount: normalizedVolumeDraft.length,
       respectExistingVolumeCount: !forceSystemRecommendedVolumeCount && normalizedVolumeDraft.length > 0,
       userPreferredVolumeCount,

@@ -1162,7 +1162,7 @@ export const novelThemeWorldGenerationPrompt: PromptAsset<
       `小说简介：${input.description || "未填写"}`,
       `目标读者：${input.targetAudience || "未填写"}`,
       `核心卖点：${input.bookSellingPoint || "未填写"}`,
-      `前30章承诺：${input.first30ChapterPromise || "未填写"}`,
+      `前30%兑现：${input.first30ChapterPromise || "未填写"}`,
       `商业标签：${input.commercialTags.length > 0 ? input.commercialTags.join("、") : "未填写"}`,
       `主类型：${input.genreName || "未选择"}`,
       `主故事模式：${input.primaryStoryModeName || "未选择"}`,

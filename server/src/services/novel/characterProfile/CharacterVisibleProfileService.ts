@@ -169,7 +169,7 @@ function extractBookContractText(bookContract: {
     bookContract.escalationLadder ? `升级阶梯：${bookContract.escalationLadder}` : "",
     bookContract.chapter3Payoff ? `3章兑现：${bookContract.chapter3Payoff}` : "",
     bookContract.chapter10Payoff ? `10章兑现：${bookContract.chapter10Payoff}` : "",
-    bookContract.chapter30Payoff ? `30章兑现：${bookContract.chapter30Payoff}` : "",
+    bookContract.chapter30Payoff ? `30%兑现：${bookContract.chapter30Payoff}` : "",
   ].filter(Boolean).join("\n");
 }
 

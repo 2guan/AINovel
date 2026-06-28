@@ -357,7 +357,7 @@ export const generateNovelOutlineOutput = z.object({
 
 export const generateStructuredOutlineInput = z.object({
   novelId: z.string().trim().min(1).optional(),
-  targetChapterCount: z.number().int().min(1).max(200).default(20),
+  targetChapterCount: z.number().int().min(1).max(200).default(12),
 });
 
 export const generateStructuredOutlineOutput = z.object({

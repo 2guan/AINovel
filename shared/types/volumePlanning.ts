@@ -4,7 +4,7 @@ import type {
   VolumeCountRange,
 } from "./novel";
 
-export const MIN_TOTAL_CHAPTER_BUDGET = 12;
+export const MIN_TOTAL_CHAPTER_BUDGET = 1;
 export const MAX_VOLUME_COUNT = 16;
 export const DEFAULT_VOLUME_CHAPTER_TARGET_RANGE: VolumeChapterTargetRange = {
   min: 40,

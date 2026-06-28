@@ -131,7 +131,7 @@ export function applyDirectorRunModeContract<T extends {
   };
 }
 
-export function normalizeDirectorTargetChapterCount(value: number | null | undefined, fallback = 80): number {
+export function normalizeDirectorTargetChapterCount(value: number | null | undefined, fallback = 12): number {
   const numericValue = typeof value === "number" && Number.isFinite(value) ? value : fallback;
   return Math.max(
     DIRECTOR_MIN_TARGET_CHAPTER_COUNT,
@@ -371,7 +371,7 @@ export function buildStoryInput(input: DirectorConfirmRequest, bookSpec: BookSpe
     input.targetAudience?.trim() ? `目标读者：${input.targetAudience.trim()}` : "",
     input.bookSellingPoint?.trim() ? `书级卖点：${input.bookSellingPoint.trim()}` : "",
     input.competingFeel?.trim() ? `对标气质：${input.competingFeel.trim()}` : "",
-    input.first30ChapterPromise?.trim() ? `前30章承诺：${input.first30ChapterPromise.trim()}` : "",
+    input.first30ChapterPromise?.trim() ? `前30%兑现：${input.first30ChapterPromise.trim()}` : "",
     input.commercialTags && input.commercialTags.length > 0 ? `商业标签：${input.commercialTags.join("、")}` : "",
     input.genreId?.trim() ? `题材基底：${input.genreId.trim()}` : "",
     input.primaryStoryModeId?.trim() ? `主推进模式：${input.primaryStoryModeId.trim()}` : "",

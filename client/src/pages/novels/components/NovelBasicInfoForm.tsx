@@ -120,7 +120,7 @@ export default function NovelBasicInfoForm(props: NovelBasicInfoFormProps) {
       <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
         <div className="text-sm font-semibold text-foreground">填写建议</div>
         <div className="mt-1 text-sm leading-6 text-muted-foreground">
-          建议先想清楚这本书写给谁、靠什么吸引人、前 30 章要兑现什么，再补创作模式、世界边界和写法确认。这里的设置会直接影响后续主线规划、卷章推进和正文生成。
+          建议先想清楚这本书写给谁、靠什么吸引人、全书前 30% 要兑现什么，再补创作模式、世界边界和写法确认。这里的设置会直接影响后续主线规划、卷章推进和正文生成。
         </div>
         {projectQuickStart ? <div className="mt-3 flex justify-end">{projectQuickStart}</div> : null}
       </div>

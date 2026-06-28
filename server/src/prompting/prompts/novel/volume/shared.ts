@@ -127,7 +127,7 @@ export function buildCommonNovelContext(novel: VolumeGenerationNovel): string {
     `description: ${compactText(novel.description)}`,
     `target audience: ${compactText(novel.targetAudience)}`,
     `selling point: ${compactText(novel.bookSellingPoint)}`,
-    `first 30 chapter promise: ${compactText(novel.first30ChapterPromise)}`,
+    `first 30% payoff promise: ${compactText(novel.first30ChapterPromise)}`,
     `narrative pov: ${compactText(novel.narrativePov, "unset")}`,
     `pace preference: ${compactText(novel.pacePreference, "unset")}`,
     `emotion intensity: ${compactText(novel.emotionIntensity, "unset")}`,

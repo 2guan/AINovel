@@ -175,7 +175,7 @@ export default function NovelCreate() {
         <CardHeader>
           <CardTitle>创建小说项目</CardTitle>
           <CardDescription>
-            先把这本书写给谁、靠什么吸引追读、前 30 章要兑现什么定义清楚。这里的设置会直接影响后续主线规划、世界边界、写法建议和 AI 生成行为，创建后仍可继续调整。
+            先把这本书写给谁、靠什么吸引追读、全书前 30% 要兑现什么定义清楚。这里的设置会直接影响后续主线规划、世界边界、写法建议和 AI 生成行为，创建后仍可继续调整。
           </CardDescription>
         </CardHeader>
         <CardContent>

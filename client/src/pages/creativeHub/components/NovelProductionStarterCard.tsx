@@ -95,7 +95,7 @@ function buildProductionPrompt(input: {
   const aiFreedom = input.aiFreedom.trim();
   const defaultChapterLength = Math.max(500, Math.min(10000, Math.floor(input.defaultChapterLength || 2500)));
   const worldType = input.worldType.trim();
-  const targetChapterCount = Math.max(1, Math.min(200, Math.floor(input.targetChapterCount || 20)));
+  const targetChapterCount = Math.max(1, Math.min(200, Math.floor(input.targetChapterCount || 12)));
   if (input.currentNovelId) {
     const segments = [`继续生成当前小说。目标章节数：${targetChapterCount}。`];
     if (description) {
@@ -174,7 +174,7 @@ export default function NovelProductionStarterCard({
 }: NovelProductionStarterCardProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [targetChapterCount, setTargetChapterCount] = useState(20);
+  const [targetChapterCount, setTargetChapterCount] = useState(12);
   const [genre, setGenre] = useState("");
   const [styleTone, setStyleTone] = useState("");
   const [narrativePov, setNarrativePov] = useState("");
@@ -330,7 +330,7 @@ export default function NovelProductionStarterCard({
             min={1}
             max={200}
             value={targetChapterCount}
-            onChange={(event) => setTargetChapterCount(Number(event.target.value || 20))}
+            onChange={(event) => setTargetChapterCount(Number(event.target.value || 12))}
           />
           <input
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-slate-400"

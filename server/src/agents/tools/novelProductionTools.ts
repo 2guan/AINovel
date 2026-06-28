@@ -185,7 +185,7 @@ export const novelProductionToolDefinitions: Partial<
       const novelId = resolveNovelId(context.novelId, input.novelId);
       if (input.dryRun) {
         const startOrder = input.startOrder ?? 1;
-        const endOrder = input.endOrder ?? Math.max(input.targetChapterCount ?? 20, startOrder);
+        const endOrder = input.endOrder ?? Math.max(input.targetChapterCount ?? 12, startOrder);
         return startFullNovelPipelineOutput.parse({
           novelId,
           jobId: null,

@@ -166,8 +166,8 @@ export const directorPlanBlueprintSchema = z.object({
         reveal: z.string().trim().optional().default(""),
         emotionBeat: z.string().trim().optional().default(""),
       })).max(6).default([]),
-    })).min(2).max(20),
-  })).min(2).max(6),
+    })).min(1).max(20),
+  })).min(1).max(6),
 });
 
 export type DirectorCandidateResponse = z.infer<typeof directorCandidateResponseSchema>;

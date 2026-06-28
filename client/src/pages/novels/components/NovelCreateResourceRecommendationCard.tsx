@@ -121,7 +121,7 @@ export default function NovelCreateResourceRecommendationCard(
         <div className="space-y-1">
           <div className="text-sm font-semibold text-foreground">先让 AI 推荐一套开书底座</div>
           <div className="text-sm leading-6 text-muted-foreground">
-            你不用先理解题材基底库和推进模式库。先写一句灵感、卖点或前 30 章承诺，系统会帮你推荐一套更适合新手起步的默认组合。
+            你不用先理解题材基底库和推进模式库。先写一句灵感、卖点或前 30% 兑现，系统会帮你推荐一套更适合新手起步的默认组合。
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -140,7 +140,7 @@ export default function NovelCreateResourceRecommendationCard(
 
       {!canRecommend ? (
         <div className="mt-3 rounded-md border border-dashed bg-background/70 p-3 text-sm text-muted-foreground">
-          先补一句灵感、概述、目标读者、卖点或前 30 章承诺中的任意一项，AI 才能更稳地判断你该从哪种题材和推进模式起步。
+          先补一句灵感、概述、目标读者、卖点或前 30% 兑现中的任意一项，AI 才能更稳地判断你该从哪种题材和推进模式起步。
         </div>
       ) : null}
 

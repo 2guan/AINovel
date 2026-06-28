@@ -184,7 +184,7 @@ function buildTakeoverIdea(novel: DirectorTakeoverNovelContext): string {
     novel.targetAudience?.trim() ? `目标读者：${novel.targetAudience.trim()}` : "",
     novel.bookSellingPoint?.trim() ? `书级卖点：${novel.bookSellingPoint.trim()}` : "",
     novel.competingFeel?.trim() ? `对标气质：${novel.competingFeel.trim()}` : "",
-    novel.first30ChapterPromise?.trim() ? `前30章承诺：${novel.first30ChapterPromise.trim()}` : "",
+    novel.first30ChapterPromise?.trim() ? `前30%兑现：${novel.first30ChapterPromise.trim()}` : "",
     novel.commercialTags.length > 0 ? `商业标签：${novel.commercialTags.join("、")}` : "",
   ].filter(Boolean);
   return lines.join("\n") || `项目标题：《${novel.title.trim() || "当前项目"}》`;
@@ -678,7 +678,7 @@ function buildStoryMacroReadiness(
   }
   return {
     available: false,
-    reason: "请至少补充一句故事概述、书级卖点、对标气质或前30章承诺，再启动自动接管。",
+    reason: "请至少补充一句故事概述、书级卖点、对标气质或前30%兑现，再启动自动接管。",
   };
 }
 

@@ -315,7 +315,7 @@ function buildChecklist(novel: NovelSetupSource): CreativeHubNovelSetupChecklist
       currentValue: joinCurrentValues([novel.primaryStoryMode?.name ?? null, novel.secondaryStoryMode?.name ?? null]),
       requiredForProduction: true,
       recommendedAction: "请先确定当前小说的主流派模式，必要时再补充一个副流派模式。这样系统才能稳定约束后续的故事规划、角色设计和卷章生成。",
-      optionPrompt: "基于当前题材、卖点和前 30 章承诺，为这本小说提供 3 套主副流派模式组合建议，并说明各自的推进逻辑、读者奖励和冲突边界。",
+      optionPrompt: "基于当前题材、卖点和前 30% 兑现，为这本小说提供 3 套主副流派模式组合建议，并说明各自的推进逻辑、读者奖励和冲突边界。",
     }),
     withStatus({
       key: "narrative",

@@ -63,7 +63,7 @@ export const DIRECTOR_CANDIDATE_SETUP_STEPS = [
   {
     key: "candidate_project_framing",
     label: "对齐书级 framing",
-    description: "把书级卖点、前 30 章承诺和气质约束转成候选生成参考。",
+    description: "把书级卖点、前 30% 兑现和气质约束转成候选生成参考。",
   },
   {
     key: "candidate_direction_batch",
@@ -178,7 +178,7 @@ export interface DirectorQualityLoopBudgetLedger {
   updatedAt?: string | null;
 }
 
-export const DIRECTOR_MIN_TARGET_CHAPTER_COUNT = 12;
+export const DIRECTOR_MIN_TARGET_CHAPTER_COUNT = 3;
 export const DIRECTOR_MAX_TARGET_CHAPTER_COUNT = 2000;
 
 export const DIRECTOR_AUTO_EXECUTION_MODES = [

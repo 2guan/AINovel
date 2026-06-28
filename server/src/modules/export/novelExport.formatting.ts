@@ -148,7 +148,7 @@ function buildBasicSummary(section: NovelExportBasicSection): string[] {
   addParagraph(lines, "目标读者", section.novel.targetAudience);
   addParagraph(lines, "核心卖点", section.novel.bookSellingPoint);
   addParagraph(lines, "对标感受", section.novel.competingFeel);
-  addParagraph(lines, "前 30 章承诺", section.novel.first30ChapterPromise);
+  addParagraph(lines, "前 30% 兑现", section.novel.first30ChapterPromise);
   addParagraph(lines, "世界切片核心框架", section.worldSlice?.slice?.coreWorldFrame ?? null);
   return lines;
 }

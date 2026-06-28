@@ -391,7 +391,7 @@ function buildRepairBibleFallback(runtimePackage: ChapterRuntimePackage | null |
   }
   const fragments = [
     context.bookContract?.sellingPoint ? `核心卖点：${context.bookContract.sellingPoint}` : "",
-    context.bookContract?.first30ChapterPromise ? `前30章承诺：${context.bookContract.first30ChapterPromise}` : "",
+    context.bookContract?.first30ChapterPromise ? `前30%兑现：${context.bookContract.first30ChapterPromise}` : "",
     context.macroConstraints?.coreConflict ? `核心冲突：${context.macroConstraints.coreConflict}` : "",
     context.macroConstraints?.progressionLoop ? `推进回路：${context.macroConstraints.progressionLoop}` : "",
     context.volumeWindow?.missionSummary ? `当前卷使命：${context.volumeWindow.missionSummary}` : "",

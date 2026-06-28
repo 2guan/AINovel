@@ -106,7 +106,7 @@ function buildBookContractBlock(writeContext: ChapterWriteContext): PromptContex
       `Genre: ${contract.genre}`,
       `Target audience: ${contract.targetAudience}`,
       `Selling point: ${contract.sellingPoint}`,
-      `First 30 chapter promise: ${contract.first30ChapterPromise}`,
+      `First 30% payoff promise: ${contract.first30ChapterPromise}`,
       `Narrative POV: ${contract.narrativePov}`,
       `Pace preference: ${contract.pacePreference}`,
       `Emotion intensity: ${contract.emotionIntensity}`,

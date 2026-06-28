@@ -346,7 +346,7 @@ export default function Home() {
         </CardHeader>
         <CardContent className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            <span>适合还没想清楚题材、卖点和前 30 章承诺时使用</span>
+            <span>适合还没想清楚题材、卖点和前 30% 兑现时使用</span>
             <span>也适合先快速搭起一本可继续推进的新项目</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">

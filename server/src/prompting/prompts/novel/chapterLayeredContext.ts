@@ -1020,7 +1020,7 @@ export function getAllContextBlocks(contextPackage: GenerationContextPackage): P
         `Genre: ${writeContext.bookContract.genre}`,
         `Target audience: ${writeContext.bookContract.targetAudience}`,
         `Selling point: ${writeContext.bookContract.sellingPoint}`,
-        `First 30 chapter promise: ${writeContext.bookContract.first30ChapterPromise}`,
+        `First 30% payoff promise: ${writeContext.bookContract.first30ChapterPromise}`,
         `Narrative POV: ${writeContext.bookContract.narrativePov}`,
         `Pace preference: ${writeContext.bookContract.pacePreference}`,
         `Emotion intensity: ${writeContext.bookContract.emotionIntensity}`,

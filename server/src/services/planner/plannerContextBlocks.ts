@@ -54,7 +54,7 @@ function buildBookFramingText(input: {
     buildBlockContent("目标读者", input.targetAudience ?? "无"),
     buildBlockContent("核心卖点", input.bookSellingPoint ?? "无"),
     buildBlockContent("竞品/对标感受", input.competingFeel ?? "无"),
-    buildBlockContent("前30章承诺", input.first30ChapterPromise ?? "无"),
+    buildBlockContent("前30%兑现", input.first30ChapterPromise ?? "无"),
     buildBlockContent("叙事视角", input.narrativePov ?? "无"),
     buildBlockContent("节奏偏好", input.pacePreference ?? "无"),
     buildBlockContent("情绪强度", input.emotionIntensity ?? "无"),

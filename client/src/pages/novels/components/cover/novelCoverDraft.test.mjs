@@ -11,7 +11,7 @@ const baseBasicForm = {
   targetAudience: "喜欢都市悬疑和高压追更感的读者",
   bookSellingPoint: "审判升级与迷雾悬案并行",
   competingFeel: "冷峻、压迫、强悬念",
-  first30ChapterPromise: "前 30 章先破第一案，再掀开黑雾交易链",
+  first30ChapterPromise: "前 30% 先破第一案，再掀开黑雾交易链",
   commercialTagsText: "强冲突，都市奇诡，强冲突，持续追更",
   genreId: "genre-urban",
   primaryStoryModeId: "mode-judge",

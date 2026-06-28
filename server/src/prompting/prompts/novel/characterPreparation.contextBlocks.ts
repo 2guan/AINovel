@@ -126,7 +126,7 @@ export function buildCharacterCastContextBlocks(input: CharacterCastContextBlock
         `核心卖点：${input.bookContract.coreSellingPoint}`,
         `第3章兑现：${input.bookContract.chapter3Payoff}`,
         `第10章兑现：${input.bookContract.chapter10Payoff}`,
-        `第30章兑现：${input.bookContract.chapter30Payoff}`,
+        `前30%兑现：${input.bookContract.chapter30Payoff}`,
         `升级阶梯：${input.bookContract.escalationLadder}`,
         `关系主线：${input.bookContract.relationshipMainline}`,
       ]) : null,

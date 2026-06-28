@@ -104,7 +104,7 @@ export default function NovelStyleRecommendationCard({ novelId }: NovelStyleReco
                 </div>
               ) : (
                 <div className="mt-3 text-sm leading-7 text-muted-foreground">
-                  这本书还没有绑定默认写法。推荐先让系统根据当前小说的目标读者、卖点和前 30 章承诺给出 2-3 套候选。
+                  这本书还没有绑定默认写法。推荐先让系统根据当前小说的目标读者、卖点和前 30% 兑现给出 2-3 套候选。
                 </div>
               )}
             </div>

@@ -91,7 +91,7 @@ export const volumeDynamicsProjectionPrompt: PromptAsset<
   render: (input) => [
     new SystemMessage([
       "你是长篇中文网文的角色动态规划器。",
-      "你的任务是基于小说定位、卖点、前 30 章承诺、角色名单、关系结构和分卷规划，生成可执行的“分卷角色动态投射”。",
+      "你的任务是基于小说定位、卖点、前 30% 兑现、角色名单、关系结构和分卷规划，生成可执行的“分卷角色动态投射”。",
       "",
       "只输出一个合法 JSON 对象，不要输出 Markdown、解释、注释、代码块或任何额外文本。",
       "顶层只能包含 assignments、factionTracks、relationStages。",
@@ -136,7 +136,7 @@ export const volumeDynamicsProjectionPrompt: PromptAsset<
       `小说简介：${input.description}`,
       `目标读者：${input.targetAudience}`,
       `核心卖点：${input.sellingPoint}`,
-      `前30章承诺：${input.firstPromise}`,
+      `前30%兑现：${input.firstPromise}`,
       `大纲：${input.outline}`,
       `结构化大纲：${input.structuredOutline}`,
       `已应用角色方案：${input.appliedCastOption}`,
@@ -200,7 +200,7 @@ export const chapterDynamicsExtractionPrompt: PromptAsset<
       `小说：${input.novelTitle}`,
       `目标读者：${input.targetAudience}`,
       `核心卖点：${input.sellingPoint}`,
-      `前30章承诺：${input.firstPromise}`,
+      `前30%兑现：${input.firstPromise}`,
       `当前卷：${input.currentVolumeTitle}`,
       `已知角色名单：\n${input.rosterText}`,
       `已知结构化关系：\n${input.relationText}`,

@@ -173,7 +173,7 @@ export const imageNovelCoverBriefPrompt: PromptAsset<
       `目标读者：${input.targetAudience ?? "未提供"}`,
       `核心卖点：${input.bookSellingPoint ?? "未提供"}`,
       `阅读气质：${input.competingFeel ?? "未提供"}`,
-      `前30章兑现：${input.first30ChapterPromise ?? "未提供"}`,
+      `前30%兑现：${input.first30ChapterPromise ?? "未提供"}`,
       `商业标签：${input.commercialTags.join("、") || "未提供"}`,
       `题材基底：${input.genreLabel ?? "未提供"}`,
       `主推进模式：${input.primaryStoryModeLabel ?? "未提供"}`,
