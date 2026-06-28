@@ -51,8 +51,8 @@ function resolveDesktopAppVersion(): string {
   const desktopPackagePath = path.resolve(__dirname, "../desktop/package.json");
   const packageJson = JSON.parse(fs.readFileSync(desktopPackagePath, "utf8")) as DesktopPackageJson;
   const version = typeof packageJson.version === "string" ? packageJson.version.trim() : "";
-  if (!/^\d+\.\d+\.\d+$/.test(version)) {
-    throw new Error(`desktop/package.json version must be stable semver like 0.3.19, got ${version || "(empty)"}.`);
+  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
+    throw new Error(`desktop/package.json version must be semver like 0.3.20 or 0.3.20-MU, got ${version || "(empty)"}.`);
   }
   return version;
 }
