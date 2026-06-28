@@ -19,6 +19,7 @@ import type { StoryMacroPlanService } from "../storyMacro/StoryMacroPlanService"
 import type { NovelVolumeService } from "../volume/NovelVolumeService";
 import type { NovelWorkflowService } from "../workflow/NovelWorkflowService";
 import { recordAutoDirectorAutoApprovalFromTask } from "../../task/autoDirectorFollowUps/autoDirectorAutoApprovalAudit";
+import { runWithNovelOwnerContext } from "../../../auth/resourceOwnerContext";
 import { normalizeDirectorMemoryScope } from "./runtime/autoDirectorMemorySafety";
 import {
   buildWorkflowSeedPayload,
@@ -99,6 +100,10 @@ export class NovelDirectorPipelineRuntime {
   }) {}
 
   async runPipeline(input: DirectorPipelineRunInput): Promise<void> {
+    return runWithNovelOwnerContext(input.novelId, () => this.runPipelineInNovelOwnerContext(input));
+  }
+
+  private async runPipelineInNovelOwnerContext(input: DirectorPipelineRunInput): Promise<void> {
     const safeStartPhase = await this.resolveSafePipelineStartPhase({
       novelId: input.novelId,
       requestedPhase: input.startPhase,
@@ -375,7 +380,7 @@ export class NovelDirectorPipelineRuntime {
     novelId: string,
     input: DirectorConfirmRequest,
   ) {
-    return runDirectorStoryMacroAssetPhase({
+    return runWithNovelOwnerContext(novelId, () => runDirectorStoryMacroAssetPhase({
       taskId,
       novelId,
       request: input,
@@ -390,7 +395,7 @@ export class NovelDirectorPipelineRuntime {
           })
         ),
       },
-    });
+    }));
   }
 
   async executeBookContractStep(
@@ -398,7 +403,7 @@ export class NovelDirectorPipelineRuntime {
     novelId: string,
     input: DirectorConfirmRequest,
   ): Promise<void> {
-    await runDirectorBookContractPhase({
+    await runWithNovelOwnerContext(novelId, () => runDirectorBookContractPhase({
       taskId,
       novelId,
       request: input,
@@ -414,7 +419,7 @@ export class NovelDirectorPipelineRuntime {
           })
         ),
       },
-    });
+    }));
   }
 
   async executeCharacterSetupStep(
@@ -422,7 +427,7 @@ export class NovelDirectorPipelineRuntime {
     novelId: string,
     input: DirectorConfirmRequest,
   ): Promise<DirectorCharacterSetupPhaseResult> {
-    return this.runCharacterSetupPhase(taskId, novelId, input);
+    return runWithNovelOwnerContext(novelId, () => this.runCharacterSetupPhase(taskId, novelId, input));
   }
 
   async executeVolumeStrategyStep(
@@ -430,7 +435,7 @@ export class NovelDirectorPipelineRuntime {
     novelId: string,
     input: DirectorConfirmRequest,
   ): Promise<VolumePlanDocument | null> {
-    return this.runVolumeStrategyPhase(taskId, novelId, input);
+    return runWithNovelOwnerContext(novelId, () => this.runVolumeStrategyPhase(taskId, novelId, input));
   }
 
   private async findReusableDirectorCharacterCastOption(targetNovelId: string): Promise<CharacterCastOption | null> {
@@ -541,7 +546,7 @@ export class NovelDirectorPipelineRuntime {
     input: DirectorConfirmRequest,
     baseWorkspace: VolumePlanDocument,
   ): Promise<void> {
-    await runDirectorStructuredOutlinePhase({
+    await runWithNovelOwnerContext(novelId, () => runDirectorStructuredOutlinePhase({
       taskId,
       novelId,
       request: input,
@@ -562,7 +567,7 @@ export class NovelDirectorPipelineRuntime {
           })
         ),
       },
-    });
+    }));
   }
 
   private async runStoryMacroPhase(

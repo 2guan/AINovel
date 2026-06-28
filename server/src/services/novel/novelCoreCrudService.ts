@@ -1,6 +1,7 @@
 import { serializeCommercialTagsJson } from "@ai-novel/shared/types/novelFraming";
 import type { NovelAutoDirectorTaskSummary } from "@ai-novel/shared/types/novel";
 import { prisma } from "../../db/prisma";
+import { getCurrentUserId } from "../../auth/authContext";
 import { AppError } from "../../middleware/errorHandler";
 import { mapNovelAutoDirectorTaskSummary } from "../task/novelWorkflowTaskSummary";
 import { getArchivedTaskIdSet } from "../task/taskArchive";
@@ -236,7 +237,7 @@ export class NovelCoreCrudService {
 
     const created = await prisma.novel.create({
       data: {
-        userId: scope?.userId ?? "admin",
+        userId: scope?.userId ?? getCurrentUserId("admin"),
         title: input.title,
         description: input.description,
         targetAudience: normalizeOptionalTextForCreate(input.targetAudience),

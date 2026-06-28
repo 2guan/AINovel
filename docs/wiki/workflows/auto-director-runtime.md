@@ -29,7 +29,7 @@ Web API 只接收命令和返回轻量投影；Worker 负责执行重型生产�
 - API route 不直接 `await` 自动导演长任务、章节生成、卷拆章、质量修复或 LLM 生产链路。
 - 高优先级硬约束：自动导演不是第二套章节生成系统。控制面可以有导演专属 command、projection 和审批策略，但正文生成与正文修复的业务执行链必须与手动单章和批量执行共用同一套 runtime。
 - 继续、恢复、重试、接管、审批、取消等用户动作先转为 command，不各自维护独立业务流程。
-- 多用户环境下，Worker、`setImmediate` 后台任务、恢复任务和自动续跑任务必须先从 `NovelWorkflowTask.userId` 解析任务所有者，再在该用户上下文中执行导演链路。任务所有者解析本身应绕开当前请求上下文的用户隔离，只读取任务归属；后续小说、资产、RAG、模型路由和设置读写必须回到任务所有者上下文。不能依赖 `getCurrentUserId()` 的默认 `admin` 兜底来执行后台任务。
+- 多用户环境下，Worker、`setImmediate` 后台任务、恢复任务和自动续跑任务必须先从 `NovelWorkflowTask.userId` 解析任务所有者，再在该用户上下文中执行控制面命令。确认候选方案创建新小说时，建书 owner 必须显式使用该任务 owner；建书后的 story macro、Book Contract、角色准备、卷规划、拆章和章节自动执行属于小说绑定业务链路，必须再按 `Novel.userId` 进入小说 owner 上下文。任务所有者解析本身应绕开当前请求上下文的用户隔离，只读取任务归属；后续小说、资产、RAG、模型路由和设置读写必须回到资源事实 owner 上下文。不能依赖 `getCurrentUserId()` 的默认 `admin` 兜底来执行后台任务。
 - `DirectorRunCommand` 表达控制面命令、租约和幂等，不表达业务完成事实。
 - `DirectorRun` 是书级导演运行的根状态，`DirectorStepRun` 是步骤执行记录，`DirectorEvent` 和 `DirectorArtifact` 用于投影和恢复。
 - StepModule 应声明输入、输出、产物、进度检查和恢复策略；Pipeline 只编排，不直接知道具体业务表和 Prompt 细节。
@@ -93,7 +93,7 @@ Web API 只接收命令和返回轻量投影；Worker 负责执行重型生产�
 ## 失败模式
 
 - 点击继续后普通查询接口一起挂起：优先检查是否有重型执行仍在 API 进程内运行。
-- 作家确认开书后进入 `story_macro` 报“小说不存在”：优先检查 `confirm_candidate` 创建小说后的后台 pipeline 是否在 `NovelWorkflowTask.userId` 对应的用户上下文中运行。若延迟调度或 worker 命令执行丢失 auth context，Prisma 用户隔离会让后续故事宏观规划看不到刚创建的小说；正确修复是恢复任务所有者上下文，而不是放宽小说查询隔离。
+- 作家确认开书后进入 `story_macro` 报“小说不存在”：先检查新建 `Novel.userId` 是否等于 `NovelWorkflowTask.userId`。如果新小说被默认写到 `admin`，作家上下文下的 story macro 会读不到它；正确修复是确认建书时显式传入任务 owner，并让小说绑定 pipeline 按 `Novel.userId` 运行，而不是放宽小说查询隔离。
 - 点击“继续自动执行章节”后 toast 成功但没有新的 LLM 请求：优先检查 command 是否已成功执行但 `chapter_execution_node` 仍是 `waiting_approval`，以及 `auto_execute_range` 是否在恢复分支或质量提醒分支丢失了 `approveAutoExecutionScope`。
 - 点击 `replan_required` 状态的“继续自动导演”后没有新 LLM 请求：检查 UI 是否把重规划检查点误判成普通 waiting；正确入口应是质量修复 / 重规划处理，或显式 `skip_quality_repair` 后登记质量待回收并继续剩余章节。
 - 点击 `skip_quality_repair` 后直接越过空章节：检查质量债是否错误绑定到 `nextChapterOrder`。正确状态应把质量债绑定到刚完成并触发质量提醒的章节，状态重算后最早空正文章节仍应留在 `remainingChapterOrders` 首位。
