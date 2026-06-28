@@ -5,6 +5,7 @@ const {
   buildDirectorAutoExecutionState,
   buildDirectorAutoExecutionScopeLabel,
   buildDirectorAutoExecutionPipelineOptions,
+  clampDirectorAutoExecutionPlanToChapterBudget,
   isDirectorAutoExecutionChapterProcessed,
   normalizeDirectorAutoExecutionPlan,
   resolveDirectorAutoExecutionRange,
@@ -39,6 +40,21 @@ test("chapter_range can carry a user-selected chapter range", () => {
   }), "第 1-25 章");
 });
 
+test("chapter_range is clamped to short-form target chapter budgets", () => {
+  assert.deepEqual(clampDirectorAutoExecutionPlanToChapterBudget({
+    mode: "chapter_range",
+    startOrder: 1,
+    endOrder: 10,
+  }, 3), {
+    mode: "chapter_range",
+    startOrder: 1,
+    endOrder: 3,
+    autoReview: true,
+    autoRepair: true,
+    artifactSyncMode: "adaptive",
+  });
+});
+
 test("book auto execution normalizes to full-book scope without chapter bounds", () => {
   assert.deepEqual(normalizeDirectorAutoExecutionPlan({ mode: "book" }), {
     mode: "book",
@@ -70,6 +86,21 @@ test("resolveDirectorAutoExecutionRange sorts chapters and limits to the selecte
     startOrder: 1,
     endOrder: 10,
     totalChapterCount: 10,
+    firstChapterId: "chapter-1",
+  });
+});
+
+test("resolveDirectorAutoExecutionRange does not extend beyond available short-form chapters", () => {
+  const range = resolveDirectorAutoExecutionRange([
+    { id: "chapter-3", order: 3 },
+    { id: "chapter-1", order: 1 },
+    { id: "chapter-2", order: 2 },
+  ]);
+
+  assert.deepEqual(range, {
+    startOrder: 1,
+    endOrder: 3,
+    totalChapterCount: 3,
     firstChapterId: "chapter-1",
   });
 });

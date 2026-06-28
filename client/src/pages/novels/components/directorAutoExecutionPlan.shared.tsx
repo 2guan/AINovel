@@ -41,7 +41,7 @@ const NEW_BOOK_SCOPE_OPTIONS: Array<{
   {
     value: "chapter_range",
     label: "第 1-N 章",
-    description: "适合先跑出开局样章，默认第 1-10 章，可按整书章节数调整。",
+    description: "适合先跑出开局样章，会按整书目标章数收束范围，也可以手动调整。",
   },
   {
     value: "volume",

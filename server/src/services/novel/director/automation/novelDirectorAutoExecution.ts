@@ -109,6 +109,36 @@ export function normalizeDirectorAutoExecutionPlan(
   };
 }
 
+function normalizeChapterBudgetLimit(value: number | null | undefined): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+  const rounded = Math.round(value);
+  return rounded > 0 ? rounded : null;
+}
+
+export function clampDirectorAutoExecutionPlanToChapterBudget(
+  plan: DirectorAutoExecutionPlan | null | undefined,
+  maxChapterCount: number | null | undefined,
+): DirectorAutoExecutionPlan {
+  const normalized = normalizeDirectorAutoExecutionPlan(plan);
+  const chapterLimit = normalizeChapterBudgetLimit(maxChapterCount);
+  if (!chapterLimit || normalized.mode !== "chapter_range") {
+    return normalized;
+  }
+
+  const startOrder = Math.min(Math.max(1, normalized.startOrder ?? 1), chapterLimit);
+  const endOrder = Math.max(
+    startOrder,
+    Math.min(Math.max(startOrder, normalized.endOrder ?? startOrder), chapterLimit),
+  );
+  return {
+    ...normalized,
+    startOrder,
+    endOrder,
+  };
+}
+
 export function resolveDirectorAutoExecutionPlanChapterRange(
   plan: DirectorAutoExecutionPlan | null | undefined,
 ): DirectorAutoExecutionChapterRange | null {
@@ -199,10 +229,11 @@ export function resolveDirectorAutoExecutionRange(
   if (selected.length === 0) {
     return null;
   }
+  const selectedEndOrder = selected[selected.length - 1]?.order ?? startOrder;
   return {
     startOrder,
-    endOrder,
-    totalChapterCount: normalizedPreferredChapterCount,
+    endOrder: selectedEndOrder,
+    totalChapterCount: selected.length,
     firstChapterId: selected[0].id,
   };
 }

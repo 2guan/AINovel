@@ -23,6 +23,7 @@ import {
 } from "../projections/novelDirectorProgress";
 import {
   buildDirectorAutoExecutionState,
+  clampDirectorAutoExecutionPlanToChapterBudget,
   countDirectorAutoExecutionChapterRange,
   hasDirectorSyncedChapterExecutionContext,
   normalizeDirectorAutoExecutionPlan,
@@ -194,11 +195,12 @@ export async function runDirectorStructuredOutlinePhase(input: {
   if (!firstVolume) {
     throw new Error("自动导演未能生成可用卷骨架。");
   }
-  const detailPlan = normalizeDirectorAutoExecutionPlan(
-    isDirectorAutoExecutionRunMode(normalizeDirectorRunMode(request.runMode))
-      ? request.autoExecutionPlan
-      : undefined,
-  );
+  const detailPlan = isDirectorAutoExecutionRunMode(normalizeDirectorRunMode(request.runMode))
+    ? clampDirectorAutoExecutionPlanToChapterBudget(
+      request.autoExecutionPlan,
+      request.candidate.targetChapterCount ?? request.estimatedChapterCount ?? null,
+    )
+    : normalizeDirectorAutoExecutionPlan(undefined);
   const sortedVolumes = baseWorkspace.volumes
     .slice()
     .sort((left, right) => left.sortOrder - right.sortOrder);

@@ -21,6 +21,7 @@
 - 1-5 章短篇必须精确覆盖目标章数。长篇可以保留合理跨度容差，短篇不能接受“只覆盖前 1-2 章”的节奏板。
 - 3 章以内短篇可以把开篇抓手、转向、高潮和收束合并在同一 beat 或相邻 beat 中，不需要单独拆出“中段走向”“高潮前挤压”“卷尾钩子”等长篇节奏段。
 - 分卷策略和卷骨架提示词遇到 1-5 章预算时，应优先生成单卷闭环；字段仍要完整，但 `midVolumeRisk`、`nextVolumeHook`、`resetPoint` 可以表达为压缩转向、轻量余波或当前卷收束，而不是制造下一卷入口。
+- 自动导演“继续自动执行前 N 章”不能把短篇目标固定解释为第 1-10 章。结构化大纲阶段必须用候选目标章数或用户预计章节数裁剪 `chapter_range`，例如 3 章目标只能准备和执行第 1-3 章。
 - 提示词遇到 `chapter30Payoff` 时，应解释为“全书前 30% 位置的阶段兑现”，短篇按比例折算。
 
 ## Failure Modes
@@ -30,6 +31,7 @@
 - 如果节奏 / 拆章仍至少生成 12 章，优先检查 `volumeChapterBudgetAllocation.ts` 是否重新出现固定 `12` 下限，或每卷预算是否重新变成至少 3 章。
 - 如果 3 章项目仍生成 5-8 个 beat，优先检查 `createVolumeBeatSheetSchema()` 是否重新出现 `min(5)`，以及 `volumeBeatSheetPrompt` 是否把短篇分支覆盖掉。
 - 如果 3 章项目出现开卷抓手、中段转向、高潮前挤压、卷尾钩子等完整长篇段落，优先检查分卷策略、卷骨架和 beat sheet 提示词是否继续使用长篇默认口径。
+- 如果节奏板只覆盖到第 3 章但自动执行仍报“不能直接自动执行第 1-10 章”，优先检查 `clampDirectorAutoExecutionPlanToChapterBudget()` 是否被结构化大纲阶段调用，以及前端是否把短篇预计章数传给自动执行计划构建。
 - 如果模型输出要求“第 30 章左右”，说明某个 prompt 或上下文标签又把比例兑现写回了固定章节号。
 
 ## Related Modules
@@ -43,4 +45,6 @@
 - `server/src/services/novel/volume/volumeChapterBudgetAllocation.ts`
 - `server/src/services/novel/volume/volumeBeatSheetChapterBudget.ts`
 - `server/src/services/novel/volume/volumeGenerationSchemas.ts`
+- `server/src/services/novel/director/automation/novelDirectorAutoExecution.ts`
+- `server/src/services/novel/director/phases/novelDirectorStructuredOutlinePhase.ts`
 - `client/src/pages/novels/novelBasicInfo.shared.ts`
