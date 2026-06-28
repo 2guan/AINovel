@@ -48,6 +48,11 @@ export async function changePassword(payload: { currentPassword: string; nextPas
   return data;
 }
 
+export async function updateProfile(payload: { displayName?: string | null }) {
+  const { data } = await apiClient.put<ApiResponse<CurrentUser>>("/auth/profile", payload);
+  return data;
+}
+
 export async function listUsers() {
   const { data } = await apiClient.get<ApiResponse<ManagedUser[]>>("/admin/users");
   return data;

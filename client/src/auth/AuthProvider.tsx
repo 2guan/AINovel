@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     try {
       if (getAuthToken()) {
-        await logoutRequest();
+        await logoutRequest().catch(() => null);
       }
     } finally {
       clearAuthToken();

@@ -132,6 +132,21 @@ export async function changePassword(input: {
   });
 }
 
+export async function updateUserProfile(input: {
+  userId: string;
+  displayName?: string | null;
+}): Promise<AuthUser> {
+  const user = await prisma.user.update({
+    where: { id: input.userId },
+    data: {
+      ...(input.displayName !== undefined
+        ? { displayName: input.displayName?.trim() || null }
+        : {}),
+    },
+  });
+  return toAuthUser(user);
+}
+
 export function extractBearerToken(header: string | undefined): string | null {
   if (!header) return null;
   const match = /^Bearer\s+(.+)$/i.exec(header.trim());

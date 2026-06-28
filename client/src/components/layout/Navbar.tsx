@@ -1,11 +1,14 @@
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { KeyRound, LogOut } from "lucide-react";
-import { changePassword } from "@/api/auth";
+import { LogOut, UserRound } from "lucide-react";
+import { changePassword, updateProfile } from "@/api/auth";
 import { useAuth } from "@/auth/AuthProvider";
 import LLMSelector from "@/components/common/LLMSelector";
 import AppVersionBadge from "@/components/layout/AppVersionBadge";
 import DesktopBrandMark from "@/components/layout/DesktopBrandMark";
 import { Button } from "@/components/ui/button";
+import { AppDialogContent, Dialog } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import {
   AUTO_DIRECTOR_MOBILE_CLASSES,
@@ -20,10 +23,68 @@ interface NavbarProps {
 export default function Navbar(props: NavbarProps) {
   const { workspaceNavMode, onWorkspaceNavModeChange } = props;
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [nextPassword, setNextPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const isHome = location.pathname === "/";
   const showWorkspaceToggle = Boolean(workspaceNavMode && onWorkspaceNavModeChange);
   const useMobileAutoDirectorShell = shouldUseAutoDirectorMobileFullWidthContent(location.pathname);
+  const accountName = user?.displayName?.trim() || user?.username || "";
+
+  useEffect(() => {
+    if (accountDialogOpen) {
+      setDisplayName(user?.displayName ?? "");
+      setCurrentPassword("");
+      setNextPassword("");
+      setConfirmPassword("");
+    }
+  }, [accountDialogOpen, user?.displayName]);
+
+  async function handleSaveProfile() {
+    if (!user) return;
+    setIsSavingProfile(true);
+    try {
+      await updateProfile({ displayName: displayName.trim() || null });
+      await refreshUser();
+      toast.success("显示名称已更新。");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "显示名称更新失败。");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
+
+  async function handleChangePassword() {
+    if (!currentPassword || !nextPassword) {
+      toast.error("请填写当前密码和新密码。");
+      return;
+    }
+    if (nextPassword.length < 8) {
+      toast.error("新密码至少需要 8 个字符。");
+      return;
+    }
+    if (nextPassword !== confirmPassword) {
+      toast.error("两次输入的新密码不一致。");
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      await changePassword({ currentPassword, nextPassword });
+      toast.success("密码已更新，请重新登录。");
+      setAccountDialogOpen(false);
+      await logout();
+      window.location.assign("/login");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "修改密码失败。");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  }
 
   return (
     <header className="flex h-16 min-w-0 items-center justify-between gap-3 border-b bg-background px-4 sm:px-6">
@@ -54,30 +115,96 @@ export default function Navbar(props: NavbarProps) {
         </div>
         {user ? (
           <div className="hidden items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground sm:flex">
-            <span className="max-w-28 truncate">{user.displayName || user.username}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              title="修改密码"
-              onClick={async () => {
-                const currentPassword = window.prompt("输入当前密码");
-                if (!currentPassword) return;
-                const nextPassword = window.prompt("输入新密码");
-                if (!nextPassword) return;
-                try {
-                  await changePassword({ currentPassword, nextPassword });
-                  toast.success("密码已更新，请重新登录。");
-                  await logout();
-                  window.location.assign("/login");
-                } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "修改密码失败。");
-                }
-              }}
-            >
-              <KeyRound className="h-4 w-4" aria-hidden="true" />
-            </Button>
+            <Dialog open={accountDialogOpen} onOpenChange={setAccountDialogOpen}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 max-w-36 gap-1 px-2 text-xs"
+                title="账号设置"
+                onClick={() => setAccountDialogOpen(true)}
+              >
+                <UserRound className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="min-w-0 truncate">{accountName}</span>
+              </Button>
+              <AppDialogContent
+                title="账号设置"
+                description={`当前账号：${user.username}`}
+                className="max-w-lg"
+                footer={(
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setAccountDialogOpen(false)}
+                  >
+                    关闭
+                  </Button>
+                )}
+              >
+                <div className="space-y-6">
+                  <section className="space-y-3">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">显示名称</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">用于顶部账号、小说作者和协作管理里的展示。</p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Input
+                        value={displayName}
+                        maxLength={40}
+                        placeholder={user.username}
+                        onChange={(event) => setDisplayName(event.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        className="shrink-0"
+                        disabled={isSavingProfile}
+                        onClick={handleSaveProfile}
+                      >
+                        {isSavingProfile ? "保存中..." : "保存名称"}
+                      </Button>
+                    </div>
+                  </section>
+
+                  <section className="space-y-3 border-t pt-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">修改密码</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">密码更新后需要重新登录。</p>
+                    </div>
+                    <div className="grid gap-3">
+                      <Input
+                        type="password"
+                        autoComplete="current-password"
+                        value={currentPassword}
+                        placeholder="当前密码"
+                        onChange={(event) => setCurrentPassword(event.target.value)}
+                      />
+                      <Input
+                        type="password"
+                        autoComplete="new-password"
+                        value={nextPassword}
+                        placeholder="新密码，至少 8 个字符"
+                        onChange={(event) => setNextPassword(event.target.value)}
+                      />
+                      <Input
+                        type="password"
+                        autoComplete="new-password"
+                        value={confirmPassword}
+                        placeholder="再次输入新密码"
+                        onChange={(event) => setConfirmPassword(event.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={isChangingPassword}
+                        onClick={handleChangePassword}
+                      >
+                        {isChangingPassword ? "更新中..." : "更新密码"}
+                      </Button>
+                    </div>
+                  </section>
+                </div>
+              </AppDialogContent>
+            </Dialog>
             <Button
               type="button"
               variant="ghost"

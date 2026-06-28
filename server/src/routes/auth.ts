@@ -9,6 +9,7 @@ import {
   extractBearerToken,
   registerPendingUser,
   revokeSession,
+  updateUserProfile,
 } from "../auth/session";
 
 const router = Router();
@@ -30,6 +31,10 @@ const registerSchema = z.object({
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
   nextPassword: passwordSchema,
+});
+
+const updateProfileSchema = z.object({
+  displayName: z.string().trim().max(40).nullable().optional(),
 });
 
 router.post("/login", validate({ body: loginSchema }), async (req, res, next) => {
@@ -98,6 +103,23 @@ router.put("/password", authMiddleware, validate({ body: changePasswordSchema })
       data: null,
       message: "密码已更新，请重新登录。",
     } satisfies ApiResponse<null>);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/profile", authMiddleware, validate({ body: updateProfileSchema }), async (req, res, next) => {
+  try {
+    const body = req.body as z.infer<typeof updateProfileSchema>;
+    const user = await updateUserProfile({
+      userId: req.user!.id,
+      displayName: body.displayName,
+    });
+    res.status(200).json({
+      success: true,
+      data: user,
+      message: "账号资料已更新。",
+    } satisfies ApiResponse<typeof user>);
   } catch (error) {
     next(error);
   }
