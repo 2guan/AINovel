@@ -49,6 +49,17 @@ test("configured Vite API base wins when runtime config is absent", () => {
   );
 });
 
+test("configured API base trims a trailing slash", () => {
+  assert.equal(
+    resolveApiBaseUrlForEnvironment({
+      runtimeConfig: { mode: "web" },
+      viteEnv: { ...productionEnv, VITE_API_BASE_URL: "https://ainovel.example.com/api/" },
+      windowLocation: webLocation,
+    }),
+    "https://ainovel.example.com/api",
+  );
+});
+
 test("configured desktop runtime API base is preserved", () => {
   assert.equal(
     resolveApiBaseUrlForEnvironment({
