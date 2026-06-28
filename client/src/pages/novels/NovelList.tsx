@@ -8,7 +8,7 @@ import type {
 } from "@ai-novel/shared/types/directorRuntime";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Gauge, RotateCcw } from "lucide-react";
+import { BookOpen, BookText, Gauge, RotateCcw } from "lucide-react";
 import { getDirectorBookAutomationProjection } from "@/api/novelDirector";
 import { continueNovelWorkflow } from "@/api/novelWorkflow";
 import { deleteNovel, downloadNovelExport, getNovelList } from "@/api/novel";
@@ -551,6 +551,18 @@ export default function NovelList() {
                       <Link to={`/novels/${novel.id}/preview`} onClick={stopCardClick}>
                         <BookOpen className="h-4 w-4" aria-hidden="true" />
                         预览
+                      </Link>
+                    </Button>
+
+                    <Button asChild size="sm" variant="outline">
+                      <Link
+                        to={`/read/${novel.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={stopCardClick}
+                      >
+                        <BookText className="h-4 w-4" aria-hidden="true" />
+                        阅读
                       </Link>
                     </Button>
 

@@ -95,6 +95,31 @@ export interface NovelDetailResponse extends Novel {
   } | null;
 }
 
+export interface PublicNovelReaderChapter {
+  id: string;
+  order: number;
+  title: string;
+  content: string;
+  updatedAt: string;
+}
+
+export interface PublicNovelReaderResponse {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: string;
+  updatedAt: string;
+  author: {
+    username: string;
+    displayName?: string | null;
+  };
+  chapters: PublicNovelReaderChapter[];
+  stats: {
+    chapterCount: number;
+    wordCount: number;
+  };
+}
+
 export interface DraftOptimizePreview {
   optimizedDraft: string;
   mode: "full" | "selection";

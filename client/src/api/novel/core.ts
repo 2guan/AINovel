@@ -21,6 +21,7 @@ import {
   extractFileName,
   type NovelDetailResponse,
   type NovelListResponse,
+  type PublicNovelReaderResponse,
   normalizeNovelListLimit,
 } from "./shared";
 
@@ -36,6 +37,11 @@ export async function getNovelList(params?: { page?: number; limit?: number }) {
 
 export async function getNovelDetail(id: string) {
   const { data } = await apiClient.get<ApiResponse<NovelDetailResponse>>(`/novels/${id}`);
+  return data;
+}
+
+export async function getPublicNovelReader(id: string) {
+  const { data } = await apiClient.get<ApiResponse<PublicNovelReaderResponse>>(`/public/novels/${id}/reader`);
   return data;
 }
 

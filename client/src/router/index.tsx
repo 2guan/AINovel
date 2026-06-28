@@ -13,6 +13,7 @@ const HelpPage = lazy(() => import("@/pages/help/HelpPage"));
 const NovelList = lazy(() => import("@/pages/novels/NovelList"));
 const NovelCreate = lazy(() => import("@/pages/novels/NovelCreate"));
 const NovelPreview = lazy(() => import("@/pages/novels/NovelPreview"));
+const NovelReaderPage = lazy(() => import("@/pages/novels/NovelReaderPage"));
 const NovelEdit = lazy(() => import("@/pages/novels/NovelEdit"));
 const NovelChapterEdit = lazy(() => import("@/pages/novels/NovelChapterEdit"));
 const DramaWorkspacePage = lazy(() => import("@/pages/drama/DramaWorkspacePage"));
@@ -42,6 +43,7 @@ const UserManagementPage = lazy(() => import("@/pages/users/UserManagementPage")
 const routes: RouteObject[] = [
   { path: "/login", element: <LoginPage /> },
   { path: "/register", element: <RegisterPage /> },
+  { path: "/read/:id", element: <NovelReaderPage /> },
   {
     path: "/pending-review",
     element: (

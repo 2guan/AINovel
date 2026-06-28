@@ -34,6 +34,7 @@ import novelDirectorRouter from "./services/novel/director/http/novelDirector";
 import novelExportRouter from "./modules/export/http/novelExport";
 import novelWorkflowsRouter from "./services/novel/director/http/novelWorkflows";
 import promptWorkbenchRouter from "./routes/promptWorkbench";
+import publicReaderRouter from "./routes/publicReader";
 import ragRouter from "./routes/rag";
 import settingsAutoDirectorRouter from "./routes/settingsAutoDirector";
 import settingsRouter from "./routes/settings";
@@ -133,6 +134,7 @@ export function createApp() {
 
   app.use("/api/health", healthRouter);
   app.use("/api/auth", authRouter);
+  app.use("/api/public", publicReaderRouter);
   app.use("/api", authMiddleware);
   app.use("/api/admin/users", adminUsersRouter);
   app.use("/api/agent-catalog", agentCatalogRouter);

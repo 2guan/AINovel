@@ -36,6 +36,7 @@ export const queryKeys = {
     novelWorldSyncDiff: (id: string) => ["novels", "novel-world", id, "sync-diff"] as const,
     worldSlice: (id: string) => ["novels", "world-slice", id] as const,
     snapshots: (id: string) => ["novels", "snapshots", id] as const,
+    publicReader: (id: string) => ["novels", "public-reader", id] as const,
   },
   worlds: {
     all: ["worlds"] as const,
