@@ -1,5 +1,6 @@
 import { serializeCommercialTagsJson } from "@ai-novel/shared/types/novelFraming";
 import type { NovelAutoDirectorTaskSummary } from "@ai-novel/shared/types/novel";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { getCurrentUserId } from "../../auth/authContext";
 import { AppError } from "../../middleware/errorHandler";
@@ -24,6 +25,8 @@ import {
   UpdateNovelInput,
 } from "./novelCoreShared";
 import { queueRagDelete, queueRagUpsert } from "./novelCoreSupport";
+
+type WorkflowTaskIdRow = { id: string };
 
 export class NovelCoreCrudService {
   private readonly novelContinuationService = new NovelContinuationService();
@@ -429,9 +432,36 @@ export class NovelCoreCrudService {
     if (!existing) {
       throw new Error("小说不存在");
     }
+    const workflowTasks = await prisma.$queryRaw<WorkflowTaskIdRow[]>`
+      SELECT "id" FROM "NovelWorkflowTask" WHERE "novelId" = ${id}
+    `;
+    const workflowTaskIds = workflowTasks.map((task) => task.id);
     queueRagDelete("novel", id);
     queueRagDelete("bible", id);
-    await prisma.novel.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.directorRuntimeInstance.deleteMany({
+        where: {
+          OR: [
+            { novelId: id },
+            ...(workflowTaskIds.length > 0
+              ? [{ workflowTaskId: { in: workflowTaskIds } }]
+              : []),
+          ],
+        },
+      });
+      if (workflowTaskIds.length > 0) {
+        await tx.$executeRaw`
+          DELETE FROM "TaskCenterArchive"
+          WHERE "taskKind" = 'novel_workflow'
+            AND "taskId" IN (${Prisma.join(workflowTaskIds)})
+        `;
+        await tx.$executeRaw`
+          DELETE FROM "NovelWorkflowTask"
+          WHERE "id" IN (${Prisma.join(workflowTaskIds)})
+        `;
+      }
+      await tx.novel.delete({ where: { id } });
+    });
   }
 
   async listChapters(novelId: string) {

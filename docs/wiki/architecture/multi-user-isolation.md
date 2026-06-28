@@ -40,9 +40,10 @@ SQLite 多用户版本采用应用层用户归属模型：
 3. 新增 `AppSetting` 型用户可配置偏好时，必须通过 `appSettingScope` 读写，不能直接写基础 key 覆盖所有用户。
 4. 新增异步任务处理器时，如果任务表有 `userId`，执行模型调用前必须用任务 `userId` 恢复 auth context；如果任务表没有 `userId`，必须能从父任务或父资源解析 owner。owner 解析本身不能使用会被当前 auth context 过滤的普通 Prisma user-owned 查询，应该通过专门的 owner resolver 或等价只读路径先拿到归属，再进入 `runWithUserIdContext`。
 5. 自动导演确认候选方案创建新小说时，必须把 `NovelWorkflowTask.userId` 显式传给建书服务；建书后的 story macro、Book Contract、角色准备、卷规划和拆章流水线必须按 `Novel.userId` 进入用户上下文。任务 owner 适合控制面命令，小说 owner 才是小说绑定业务资源和个人模型配置的事实归属。
-6. 新增以资源 id 直接读取、更新或删除的 HTTP 入口时，必须加参数级所有权守卫；守卫用于提供更清晰的 HTTP 错误和入口保护，不能替代 Prisma 请求级隔离。
-7. 子表优先通过父资源所有权间接隔离；直接按子表 id、父 id 或复合 key 查询前，必须先确认父资源在当前用户上下文可见。只有需要跨父资源直接列表或直接访问时，才额外增加自身 `userId`。
-8. 管理员功能不能只靠前端隐藏，必须有后端 `requireAdmin` 或等价权限守卫。
+6. 删除小说时必须同时清理小说绑定的控制面记录。`NovelWorkflowTask.novelId`、`DirectorRun.novelId`、`DirectorRunCommand.novelId` 等字段为了保留恢复弹性可能使用 `SetNull`，不能依赖数据库外键自动清掉任务中心、恢复入口或导演跟进中心残影；删除入口应先清理该小说关联的 workflow task、director runtime instance 和任务中心归档记录，再删除小说本体。
+7. 新增以资源 id 直接读取、更新或删除的 HTTP 入口时，必须加参数级所有权守卫；守卫用于提供更清晰的 HTTP 错误和入口保护，不能替代 Prisma 请求级隔离。
+8. 子表优先通过父资源所有权间接隔离；直接按子表 id、父 id 或复合 key 查询前，必须先确认父资源在当前用户上下文可见。只有需要跨父资源直接列表或直接访问时，才额外增加自身 `userId`。
+9. 管理员功能不能只靠前端隐藏，必须有后端 `requireAdmin` 或等价权限守卫。
 
 ## Failure Modes
 
@@ -51,6 +52,7 @@ SQLite 多用户版本采用应用层用户归属模型：
 - 给个人模型配置写入全局 key：一个作家的模型设置会影响所有用户。
 - 后台任务没有登录上下文时读取普通用户配置：会让任务行为依赖启动者之外的随机上下文。后台默认应使用管理员配置，除非任务模型显式保存了所属用户，此时必须恢复任务所属用户上下文。
 - 子表缺少自身 `userId` 时直接按 `threadId`、`analysisId` 或 `chapterId` 查询：如果没有先验证父资源可见性，用户可能通过猜测 id 读取不属于自己的历史、拆书 section 或章节内容。
+- 删除小说只删 `Novel` 本体：外键 `SetNull` 会让 workflow task、director runtime、任务中心归档等控制面记录脱离小说继续存在，表现为已删除项目仍在任务中心或导演跟进中心出现。
 - 将 `APIKey`、`ModelRouteConfig` 同时交给通用 Prisma user scope 和手写管理员兜底逻辑：两层过滤会互相覆盖，导致管理员默认配置无法被普通用户继承。模型密钥和模型路由应通过专用服务显式处理个人优先与管理员兜底。
 
 ## Related Modules
