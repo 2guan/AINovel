@@ -14,7 +14,7 @@ services:
     ports:
       - "${DOCKER_API_PORT:-4001}:3000"
     volumes:
-      - ai-novel-storage:/app/storage
+      - ${DOCKER_DATA_DIR:-./AINovelData}/storage:/app/storage
 
   web:
     build:
@@ -26,6 +26,3 @@ services:
       - api
     ports:
       - "${DOCKER_WEB_PORT:-4002}:8080"
-
-volumes:
-  ai-novel-storage:

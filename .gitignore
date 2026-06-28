@@ -20,6 +20,7 @@ server/tmp/**/*.sqlite
 server/tmp/**/*.sqlite*
 server/tmp/**/*.sqlite-*
 server/storage/
+AINovelData/
 server/src/prisma/dev.db
 server/src/prisma/dev.db-journal
 .history/
