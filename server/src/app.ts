@@ -79,6 +79,13 @@ function parseEnvFlag(value: string | undefined, defaultValue: boolean): boolean
   return value === "true" || value === "1";
 }
 
+function normalizeRepeatedPathSlashes(url: string): string {
+  const queryStart = url.indexOf("?");
+  const pathPart = queryStart >= 0 ? url.slice(0, queryStart) : url;
+  const queryPart = queryStart >= 0 ? url.slice(queryStart) : "";
+  return `${pathPart.replace(/\/{2,}/g, "/")}${queryPart}`;
+}
+
 export function createApp() {
   getSharedNovelServices();
   const app = express();
@@ -108,6 +115,10 @@ export function createApp() {
     }),
   );
   app.use(helmet());
+  app.use((req, _res, next) => {
+    req.url = normalizeRepeatedPathSlashes(req.url);
+    next();
+  });
   app.use(morgan((tokens, req, res) => {
     const method = tokens.method(req, res) ?? "-";
     const url = tokens.url(req, res) ?? "-";
@@ -120,7 +131,7 @@ export function createApp() {
   }));
   app.use(express.json({ limit: jsonBodyLimit }));
 
-  app.use(["/api/health", "/api//health"], healthRouter);
+  app.use("/api/health", healthRouter);
   app.use("/api/auth", authRouter);
   app.use("/api", authMiddleware);
   app.use("/api/admin/users", adminUsersRouter);
