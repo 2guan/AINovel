@@ -84,6 +84,18 @@ export async function resolveComicBatchJobOwnerUserId(jobId: string | null | und
   `);
 }
 
+export async function resolveComicEpisodeOwnerUserId(episodeId: string | null | undefined): Promise<string | null> {
+  const id = normalizeId(episodeId);
+  if (!id) return null;
+  return firstUserId(await prisma.$queryRaw<OwnerRow[]>`
+    SELECT p."userId"
+    FROM "ComicEpisode" e
+    JOIN "ComicProject" p ON p."id" = e."projectId"
+    WHERE e."id" = ${id}
+    LIMIT 1
+  `);
+}
+
 export async function resolveNovelSideEffectJobOwnerUserId(jobId: string | null | undefined): Promise<string | null> {
   const id = normalizeId(jobId);
   if (!id) return null;
@@ -108,4 +120,11 @@ export async function runWithWorkflowTaskOwnerContext<T>(
   callback: () => Promise<T>,
 ): Promise<T> {
   return runWithUserIdContext(await resolveWorkflowTaskOwnerUserId(taskId), callback);
+}
+
+export async function runWithComicEpisodeOwnerContext<T>(
+  episodeId: string | null | undefined,
+  callback: () => Promise<T>,
+): Promise<T> {
+  return runWithUserIdContext(await resolveComicEpisodeOwnerUserId(episodeId), callback);
 }

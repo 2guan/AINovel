@@ -10,6 +10,7 @@ import type {
   VolumeSyncPreview,
 } from "@ai-novel/shared/types/novel";
 import type { Prisma } from "@prisma/client";
+import { runWithNovelOwnerContext } from "../../../auth/resourceOwnerContext";
 import { prisma } from "../../../db/prisma";
 import { novelEventBus } from "../../../events";
 import type { VolumeUpdateReason } from "../../../events";
@@ -210,7 +211,7 @@ export class NovelVolumeService {
   }
 
   private syncPayoffLedger(novelId: string): void {
-    void payoffLedgerSyncService.syncLedger(novelId).catch(() => null);
+    void runWithNovelOwnerContext(novelId, () => payoffLedgerSyncService.syncLedger(novelId)).catch(() => null);
   }
 
   private async persistWorkspaceDocument(

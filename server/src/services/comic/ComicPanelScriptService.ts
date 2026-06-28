@@ -1,4 +1,5 @@
 import type { LLMProvider } from "@ai-novel/shared/types/llm";
+import { runWithComicEpisodeOwnerContext } from "../../auth/resourceOwnerContext";
 import { prisma } from "../../db/prisma";
 import { runStructuredPrompt } from "../../prompting/core/promptRunner";
 import { comicPanelScriptPrompt } from "../../prompting/prompts/comic/comic.prompts";
@@ -155,7 +156,8 @@ export class ComicPanelScriptService {
     });
 
     // 异步提取跨话事实，不阻塞响应
-    void comicFactService.extractAndSave(episodeId, provider);
+    void runWithComicEpisodeOwnerContext(episodeId, () => comicFactService.extractAndSave(episodeId, provider))
+      .catch(() => undefined);
 
     return prisma.comicEpisode.findUnique({
       where: { id: episodeId },
