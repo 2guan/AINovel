@@ -131,7 +131,7 @@ export function applyDirectorRunModeContract<T extends {
   };
 }
 
-export function normalizeDirectorTargetChapterCount(value: number | null | undefined, fallback = 12): number {
+export function normalizeDirectorTargetChapterCount(value: number | null | undefined, fallback = 5): number {
   const numericValue = typeof value === "number" && Number.isFinite(value) ? value : fallback;
   return Math.max(
     DIRECTOR_MIN_TARGET_CHAPTER_COUNT,

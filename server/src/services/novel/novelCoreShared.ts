@@ -269,7 +269,7 @@ const CONTINUATION_ANALYSIS_SECTION_KEYS: BookAnalysisSectionKey[] = [
 ];
 
 const CONTINUATION_ANALYSIS_SECTION_KEY_SET = new Set<BookAnalysisSectionKey>(CONTINUATION_ANALYSIS_SECTION_KEYS);
-export const DEFAULT_ESTIMATED_CHAPTER_COUNT = 12;
+export const DEFAULT_ESTIMATED_CHAPTER_COUNT = 5;
 
 export function normalizeNovelOutput<T extends {
   continuationBookAnalysisSections?: string | null;

@@ -178,7 +178,7 @@ export interface DirectorQualityLoopBudgetLedger {
   updatedAt?: string | null;
 }
 
-export const DIRECTOR_MIN_TARGET_CHAPTER_COUNT = 3;
+export const DIRECTOR_MIN_TARGET_CHAPTER_COUNT = 1;
 export const DIRECTOR_MAX_TARGET_CHAPTER_COUNT = 2000;
 
 export const DIRECTOR_AUTO_EXECUTION_MODES = [

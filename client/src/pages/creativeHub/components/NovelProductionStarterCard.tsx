@@ -12,6 +12,8 @@ interface NovelProductionStarterCardProps {
   onQuickAction?: (prompt: string) => void;
 }
 
+const DEFAULT_TARGET_CHAPTER_COUNT = 5;
+
 function fromNarrativePov(value: "first_person" | "third_person" | "mixed" | null | undefined): string {
   if (value === "first_person") return "第一人称";
   if (value === "third_person") return "第三人称";
@@ -95,7 +97,7 @@ function buildProductionPrompt(input: {
   const aiFreedom = input.aiFreedom.trim();
   const defaultChapterLength = Math.max(500, Math.min(10000, Math.floor(input.defaultChapterLength || 2500)));
   const worldType = input.worldType.trim();
-  const targetChapterCount = Math.max(1, Math.min(200, Math.floor(input.targetChapterCount || 12)));
+  const targetChapterCount = Math.max(1, Math.min(200, Math.floor(input.targetChapterCount || DEFAULT_TARGET_CHAPTER_COUNT)));
   if (input.currentNovelId) {
     const segments = [`继续生成当前小说。目标章节数：${targetChapterCount}。`];
     if (description) {
@@ -174,7 +176,7 @@ export default function NovelProductionStarterCard({
 }: NovelProductionStarterCardProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [targetChapterCount, setTargetChapterCount] = useState(12);
+  const [targetChapterCount, setTargetChapterCount] = useState(DEFAULT_TARGET_CHAPTER_COUNT);
   const [genre, setGenre] = useState("");
   const [styleTone, setStyleTone] = useState("");
   const [narrativePov, setNarrativePov] = useState("");
@@ -330,7 +332,7 @@ export default function NovelProductionStarterCard({
             min={1}
             max={200}
             value={targetChapterCount}
-            onChange={(event) => setTargetChapterCount(Number(event.target.value || 12))}
+            onChange={(event) => setTargetChapterCount(Number(event.target.value || DEFAULT_TARGET_CHAPTER_COUNT))}
           />
           <input
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-slate-400"

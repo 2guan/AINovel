@@ -262,7 +262,7 @@ async function generateVolumeChapterList(params: {
   const targetVolume = workspace.volumes[targetIndex];
   const targetChapterCount = targetVolume.chapters.length >= 3
     ? targetVolume.chapters.length
-    : chapterBudgets[targetIndex] ?? Math.max(3, Math.round(chapterBudget / Math.max(workspace.volumes.length, 1)));
+    : chapterBudgets[targetIndex] ?? Math.max(1, Math.round(chapterBudget / Math.max(workspace.volumes.length, 1)));
 
   const generated = await runStructuredPrompt({
     asset: createVolumeChapterListPrompt(targetChapterCount),

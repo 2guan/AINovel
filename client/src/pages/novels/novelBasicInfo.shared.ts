@@ -43,7 +43,7 @@ export interface BasicInfoOption<T extends string> {
   recommended?: boolean;
 }
 
-export const DEFAULT_ESTIMATED_CHAPTER_COUNT = 12;
+export const DEFAULT_ESTIMATED_CHAPTER_COUNT = 5;
 
 export const WRITING_MODE_OPTIONS: BasicInfoOption<NovelBasicFormState["writingMode"]>[] = [
   {

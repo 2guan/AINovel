@@ -28,7 +28,7 @@ export function resolveBeatSheetTargetChapterCount(input: {
   chapterBudgets: number[];
 }): number {
   const fallbackTargetChapterCount = input.chapterBudgets[input.targetVolumeIndex]
-    ?? Math.max(3, Math.round(input.chapterBudget / Math.max(input.volumeCount, 1)));
+    ?? Math.max(1, Math.round(input.chapterBudget / Math.max(input.volumeCount, 1)));
   return Math.max(input.targetVolumeChapterCount, fallbackTargetChapterCount);
 }
 

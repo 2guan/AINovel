@@ -74,7 +74,7 @@ export function resolveTargetChapterCount(input: {
   beatSheetCountAccepted: boolean;
   maxTrustedChapterCount: number;
 } {
-  const budgetedChapterCount = Math.max(3, Math.round(input.budgetedChapterCount || 0));
+  const budgetedChapterCount = Math.max(1, Math.round(input.budgetedChapterCount || 0));
   const beatSheetRequiredChapterCount = Math.max(0, Math.round(input.beatSheetRequiredChapterCount || 0));
   const maxTrustedChapterCount = budgetedChapterCount + Math.max(6, Math.ceil(budgetedChapterCount * 0.25));
 
@@ -115,13 +115,13 @@ export function validateBeatSheetChapterCoverage(input: {
   maxTrustedChapterCount: number;
   message: string | null;
 } {
-  const targetChapterCount = Math.max(3, Math.round(input.targetChapterCount || 0));
+  const targetChapterCount = Math.max(1, Math.round(input.targetChapterCount || 0));
   const requiredChapterCount = inferRequiredChapterCountFromBeatSheet(input.beatSheet);
   const continuousChapterCount = inferContinuousChapterCoverageFromBeatSheet(input.beatSheet);
   const plannedChapterCount = sumBeatSheetChapterSpanCounts(input.beatSheet);
   const toleranceChapterCount = Math.max(
     2,
-    Math.round(input.toleranceChapterCount ?? Math.max(3, Math.ceil(targetChapterCount * 0.08))),
+    Math.round(input.toleranceChapterCount ?? Math.max(1, Math.ceil(targetChapterCount * 0.08))),
   );
   const minTrustedChapterCount = Math.max(1, targetChapterCount - toleranceChapterCount);
   const maxTrustedChapterCount = targetChapterCount + toleranceChapterCount;

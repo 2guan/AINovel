@@ -137,7 +137,7 @@ export const productionWorkflowDefinitions: WorkflowDefinition[] = [
           tool: "generate_structured_outline",
           reason: "生成结构化大纲",
           input: {
-            targetChapterCount: intent.targetChapterCount ?? 12,
+            targetChapterCount: intent.targetChapterCount ?? 5,
           },
           keyPrefix: "produce_structured_outline",
         },
@@ -154,7 +154,7 @@ export const productionWorkflowDefinitions: WorkflowDefinition[] = [
           reason: "预览整本写作范围",
           input: {
             startOrder: 1,
-            endOrder: intent.targetChapterCount ?? 12,
+            endOrder: intent.targetChapterCount ?? 5,
           },
           keyPrefix: "produce_preview_pipeline",
         },
@@ -164,7 +164,7 @@ export const productionWorkflowDefinitions: WorkflowDefinition[] = [
           reason: "启动整本写作任务",
           input: {
             startOrder: 1,
-            endOrder: intent.targetChapterCount ?? 12,
+            endOrder: intent.targetChapterCount ?? 5,
           },
           keyPrefix: "produce_queue_pipeline",
         },
