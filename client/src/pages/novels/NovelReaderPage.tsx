@@ -143,10 +143,10 @@ export default function NovelReaderPage() {
       return;
     }
 
-    const nextPageWidth = Math.max(1, Math.floor(viewport.clientWidth));
+    const nextPageWidth = Math.max(1, viewport.getBoundingClientRect().width);
     setMobilePageWidth(nextPageWidth);
     window.requestAnimationFrame(() => {
-      const totalWidth = content.scrollWidth;
+      const totalWidth = Math.max(content.scrollWidth, content.getBoundingClientRect().width);
       const nextPageCount = Math.max(1, Math.ceil(totalWidth / nextPageWidth - 0.01));
       setMobilePageCount(nextPageCount);
       setMobilePageIndex((current) => Math.min(current, nextPageCount - 1));
@@ -505,10 +505,12 @@ export default function NovelReaderPage() {
                             ref={mobilePagerContentRef}
                             className="h-full transition-transform duration-200 ease-out"
                             style={{
+                              boxSizing: "border-box",
                               columnGap: 0,
                               columnWidth: mobilePageWidth > 0 ? `${mobilePageWidth}px` : undefined,
                               fontSize,
                               transform: `translateX(-${activeMobilePageIndex * mobilePageWidth}px)`,
+                              width: mobilePageWidth > 0 ? `${mobilePageWidth}px` : undefined,
                             }}
                           >
                             {shouldShowMobileBookTitlePage ? (
@@ -553,7 +555,7 @@ export default function NovelReaderPage() {
                               </div>
                             </section>
                             {paragraphs.map((paragraph, index) => (
-                              <p key={`${activeChapter.id}-paged-${index}`} className="mb-5 break-words text-justify">
+                              <p key={`${activeChapter.id}-paged-${index}`} className="mb-5 break-words px-1 text-justify">
                                 {paragraph}
                               </p>
                             ))}
