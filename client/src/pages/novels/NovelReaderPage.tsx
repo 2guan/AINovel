@@ -101,6 +101,7 @@ export default function NovelReaderPage() {
   const activeMobilePageIndex = Math.min(mobilePageIndex, Math.max(0, mobilePageCount - 1));
   const authorName = reader?.author.displayName?.trim() || reader?.author.username || "未知作者";
   const updatedAt = reader?.updatedAt ? formatReaderDate(reader.updatedAt) : "";
+  const shouldShowMobileBookTitlePage = activeIndex === 0;
 
   useEffect(() => {
     if (!reader?.title) {
@@ -510,6 +511,47 @@ export default function NovelReaderPage() {
                               transform: `translateX(-${activeMobilePageIndex * mobilePageWidth}px)`,
                             }}
                           >
+                            {shouldShowMobileBookTitlePage ? (
+                              <section
+                                className="flex h-full flex-col items-center justify-center px-6 text-center"
+                                style={{
+                                  breakAfter: "column",
+                                  breakInside: "avoid",
+                                }}
+                              >
+                                <div className={cn("text-sm", isNightMode ? "text-emerald-200/80" : "text-emerald-700")}>
+                                  AI 小说公开阅读
+                                </div>
+                                <h2 className="mt-5 max-w-full break-words text-3xl font-semibold leading-tight">
+                                  {reader.title}
+                                </h2>
+                                <div className={cn("mt-5 text-sm", isNightMode ? "text-slate-400" : "text-slate-500")}>
+                                  作者：{authorName}
+                                </div>
+                                <div className={cn("mt-2 text-xs", isNightMode ? "text-slate-500" : "text-slate-400")}>
+                                  共 {formatCount(reader.stats.chapterCount)} 章 · {formatCount(reader.stats.wordCount)} 字
+                                </div>
+                              </section>
+                            ) : null}
+                            <section
+                              className="flex h-full flex-col justify-center px-6"
+                              style={{
+                                breakAfter: "column",
+                                breakInside: "avoid",
+                              }}
+                            >
+                              <div className={cn("text-sm", isNightMode ? "text-emerald-200/80" : "text-emerald-700")}>
+                                第 {activeChapter.order} 章
+                              </div>
+                              <h2 className="mt-4 break-words text-2xl font-semibold leading-tight">
+                                {activeChapter.title}
+                              </h2>
+                              <div className={cn("mt-5 text-sm leading-7", isNightMode ? "text-slate-400" : "text-slate-500")}>
+                                <div>《{reader.title}》</div>
+                                <div>作者：{authorName}</div>
+                                {updatedAt ? <div>更新：{updatedAt}</div> : null}
+                              </div>
+                            </section>
                             {paragraphs.map((paragraph, index) => (
                               <p key={`${activeChapter.id}-paged-${index}`} className="mb-5 break-words text-justify">
                                 {paragraph}
