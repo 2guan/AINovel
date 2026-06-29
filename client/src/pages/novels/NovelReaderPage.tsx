@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 
 const MIN_FONT_SIZE = 16;
 const MAX_FONT_SIZE = 24;
+const writeCtaClassName = "h-8 gap-1.5 border border-black bg-white px-3 text-xs font-medium text-black shadow-none hover:bg-white/90";
 
 function splitChapterParagraphs(content: string): string[] {
   return content
@@ -270,9 +271,9 @@ export default function NovelReaderPage() {
               </h1>
             </div>
             <div className="flex items-center gap-2">
-              <Button asChild size="sm" className="h-9 gap-1.5 px-3">
+              <Button asChild size="sm" variant="outline" className={writeCtaClassName}>
                 <Link to="/">
-                  <PenLine className="h-4 w-4" aria-hidden="true" />
+                  <PenLine className="h-3.5 w-3.5" aria-hidden="true" />
                   我也要写
                 </Link>
               </Button>
@@ -680,12 +681,22 @@ export default function NovelReaderPage() {
               isNightMode ? "border-white/10 bg-[#141a1f]/92 text-slate-100" : "border-slate-200/80 bg-[#f4f7f3]/92 text-slate-950",
             )}
           >
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <BookOpenCheck className="h-4 w-4" aria-hidden="true" />
-              公开阅读
-            </div>
-            <div className="mt-1 min-w-0 truncate text-base font-semibold">
-              {reader?.title ?? "小说阅读"}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <BookOpenCheck className="h-4 w-4" aria-hidden="true" />
+                  公开阅读
+                </div>
+                <div className="mt-1 min-w-0 truncate text-base font-semibold">
+                  {reader?.title ?? "小说阅读"}
+                </div>
+              </div>
+              <Button asChild size="sm" variant="outline" className={writeCtaClassName}>
+                <Link to="/">
+                  <PenLine className="h-3.5 w-3.5" aria-hidden="true" />
+                  我也要写
+                </Link>
+              </Button>
             </div>
             <div className={cn("mt-1 truncate text-xs", isNightMode ? "text-slate-400" : "text-slate-500")}>
               第 {activeChapter.order} 章 · {activeChapter.title}
@@ -700,15 +711,7 @@ export default function NovelReaderPage() {
           >
             <div className="grid gap-3">
               <div>
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-xs font-medium" htmlFor="floating-reader-chapter-select">章节</label>
-                  <Button asChild size="sm" className="h-8 gap-1.5 px-3">
-                    <Link to="/">
-                      <PenLine className="h-3.5 w-3.5" aria-hidden="true" />
-                      我也要写
-                    </Link>
-                  </Button>
-                </div>
+                <label className="text-xs font-medium" htmlFor="floating-reader-chapter-select">章节</label>
                 <select
                   id="floating-reader-chapter-select"
                   className={cn(
