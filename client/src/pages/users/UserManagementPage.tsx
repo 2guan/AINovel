@@ -94,12 +94,12 @@ export default function UserManagementPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="space-y-1">
           <CardTitle>创建成员</CardTitle>
           <CardDescription>为团队成员开通账号，或让新注册用户通过审核后开始创作。</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-3 md:grid-cols-5" onSubmit={handleCreate}>
+          <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" onSubmit={handleCreate}>
             <Input placeholder="用户名" value={username} onChange={(event) => setUsername(event.target.value)} />
             <Input placeholder="显示名称" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
             <Input
@@ -116,67 +116,77 @@ export default function UserManagementPage() {
                 <SelectItem value="pending">待审核</SelectItem>
               </SelectContent>
             </Select>
-            <Button type="submit" disabled={createMutation.isPending}>
+            <Button type="submit" className="sm:col-span-2 lg:col-span-1" disabled={createMutation.isPending}>
               {createMutation.isPending ? "创建中..." : "创建"}
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      <div className="grid gap-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {users.map((user) => (
           <Card key={user.id}>
-            <CardContent className="flex flex-wrap items-center gap-3 p-4">
-              <div className="min-w-52 flex-1">
-                <div className="font-medium">{formatUserName(user)}</div>
-                <div className="text-xs text-muted-foreground">@{user.username}</div>
+            <CardContent className="space-y-4 p-4">
+              <div>
+                <div className="break-words font-medium">{formatUserName(user)}</div>
+                <div className="mt-1 break-all text-xs text-muted-foreground">@{user.username}</div>
               </div>
-              <Select
-                value={user.role}
-                onValueChange={(value) => updateMutation.mutate({ id: user.id, payload: { role: value as UserRole } })}
-              >
-                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">{ROLE_LABELS.admin}</SelectItem>
-                  <SelectItem value="writer">{ROLE_LABELS.writer}</SelectItem>
-                  <SelectItem value="pending">{ROLE_LABELS.pending}</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
-                value={user.status}
-                onValueChange={(value) => updateMutation.mutate({ id: user.id, payload: { status: value as UserStatus } })}
-              >
-                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">{STATUS_LABELS.active}</SelectItem>
-                  <SelectItem value="pending_review">{STATUS_LABELS.pending_review}</SelectItem>
-                  <SelectItem value="disabled">{STATUS_LABELS.disabled}</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  const nextPassword = window.prompt(`为 ${formatUserName(user)} 设置新密码`);
-                  if (nextPassword) {
-                    updateMutation.mutate({ id: user.id, payload: { password: nextPassword } });
-                  }
-                }}
-              >
-                重置密码
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={user.id === "admin"}
-                onClick={() => {
-                  if (window.confirm(`删除 ${formatUserName(user)}？`)) {
-                    deleteMutation.mutate(user.id);
-                  }
-                }}
-              >
-                删除
-              </Button>
+              <div className="grid gap-3">
+                <div className="grid gap-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">角色</label>
+                  <Select
+                    value={user.role}
+                    onValueChange={(value) => updateMutation.mutate({ id: user.id, payload: { role: value as UserRole } })}
+                  >
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">{ROLE_LABELS.admin}</SelectItem>
+                      <SelectItem value="writer">{ROLE_LABELS.writer}</SelectItem>
+                      <SelectItem value="pending">{ROLE_LABELS.pending}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">状态</label>
+                  <Select
+                    value={user.status}
+                    onValueChange={(value) => updateMutation.mutate({ id: user.id, payload: { status: value as UserStatus } })}
+                  >
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">{STATUS_LABELS.active}</SelectItem>
+                      <SelectItem value="pending_review">{STATUS_LABELS.pending_review}</SelectItem>
+                      <SelectItem value="disabled">{STATUS_LABELS.disabled}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const nextPassword = window.prompt(`为 ${formatUserName(user)} 设置新密码`);
+                    if (nextPassword) {
+                      updateMutation.mutate({ id: user.id, payload: { password: nextPassword } });
+                    }
+                  }}
+                >
+                  重置密码
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={user.id === "admin"}
+                  onClick={() => {
+                    if (window.confirm(`删除 ${formatUserName(user)}？`)) {
+                      deleteMutation.mutate(user.id);
+                    }
+                  }}
+                >
+                  删除
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}

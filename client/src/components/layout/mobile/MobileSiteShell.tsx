@@ -90,6 +90,12 @@ export default function MobileSiteShell({ children }: MobileSiteShellProps) {
   const pageTitle = getMobilePageTitle(location.pathname);
   const primaryNavItems = getMobilePrimaryNavItems();
   const moreNavGroups = getMobileMoreNavGroups();
+  const visibleMoreNavGroups = moreNavGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.adminOnly || user?.role === "admin"),
+    }))
+    .filter((group) => group.items.length > 0);
   const accountName = user?.displayName?.trim() || user?.username || "";
 
   useEffect(() => {
@@ -258,7 +264,7 @@ export default function MobileSiteShell({ children }: MobileSiteShellProps) {
                   </div>
                 </section>
               ) : null}
-              {moreNavGroups.map((group) => (
+              {visibleMoreNavGroups.map((group) => (
                 <section key={group.title} className="space-y-2">
                   <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {group.title}

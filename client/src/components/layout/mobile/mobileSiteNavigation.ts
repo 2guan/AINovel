@@ -5,6 +5,7 @@ export interface MobileNavItem {
   label: string;
   to: string;
   group: MobilePrimaryNavKey;
+  adminOnly?: boolean;
 }
 
 export interface MobileNavGroup {
@@ -38,6 +39,7 @@ export const MOBILE_ROUTE_PATTERNS: MobileRoutePattern[] = [
   { key: "story-modes", pattern: /^\/story-modes\/?$/, title: "推进模式", group: "more" },
   { key: "titles", pattern: /^\/titles\/?$/, title: "标题工坊", group: "more" },
   { key: "prompt-workbench", pattern: /^\/prompt-workbench\/?$/, title: "提示词管理", group: "more" },
+  { key: "users", pattern: /^\/settings\/users\/?$/, title: "成员管理", group: "more" },
   { key: "model-routes", pattern: /^\/settings\/model-routes\/?$/, title: "模型路由", group: "more" },
   { key: "settings", pattern: /^\/settings\/?$/, title: "系统设置", group: "more" },
   { key: "worlds", pattern: /^\/worlds\/?$/, title: "世界样本库", group: "more" },
@@ -82,7 +84,8 @@ const moreNavGroups: MobileNavGroup[] = [
     items: [
       { key: "worlds", label: "世界样本库", to: "/worlds", group: "more" },
       { key: "world-generator", label: "创建世界样本", to: "/worlds/generator", group: "more" },
-      { key: "prompt-workbench", label: "提示词管理", to: "/prompt-workbench", group: "more" },
+      { key: "prompt-workbench", label: "提示词管理", to: "/prompt-workbench", group: "more", adminOnly: true },
+      { key: "users", label: "成员管理", to: "/settings/users", group: "more", adminOnly: true },
       { key: "model-routes", label: "模型路由", to: "/settings/model-routes", group: "more" },
       { key: "settings", label: "系统设置", to: "/settings", group: "more" },
     ],
