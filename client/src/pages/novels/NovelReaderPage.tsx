@@ -8,11 +8,12 @@ import {
   ListTree,
   Minus,
   Moon,
+  PenLine,
   Plus,
   Sun,
   Type,
 } from "lucide-react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { getPublicNovelReader, type PublicNovelReaderChapter } from "@/api/novel";
 import { queryKeys } from "@/api/queryKeys";
 import { Button } from "@/components/ui/button";
@@ -269,6 +270,12 @@ export default function NovelReaderPage() {
               </h1>
             </div>
             <div className="flex items-center gap-2">
+              <Button asChild size="sm" className="h-9 gap-1.5 px-3">
+                <Link to="/">
+                  <PenLine className="h-4 w-4" aria-hidden="true" />
+                  我也要写
+                </Link>
+              </Button>
               <Button
                 type="button"
                 variant={isNightMode ? "secondary" : "outline"}
@@ -693,7 +700,15 @@ export default function NovelReaderPage() {
           >
             <div className="grid gap-3">
               <div>
-                <label className="text-xs font-medium" htmlFor="floating-reader-chapter-select">章节</label>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-medium" htmlFor="floating-reader-chapter-select">章节</label>
+                  <Button asChild size="sm" className="h-8 gap-1.5 px-3">
+                    <Link to="/">
+                      <PenLine className="h-3.5 w-3.5" aria-hidden="true" />
+                      我也要写
+                    </Link>
+                  </Button>
+                </div>
                 <select
                   id="floating-reader-chapter-select"
                   className={cn(
