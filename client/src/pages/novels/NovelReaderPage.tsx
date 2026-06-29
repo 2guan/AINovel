@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import type { TouchEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -19,8 +20,6 @@ import { cn } from "@/lib/utils";
 
 const MIN_FONT_SIZE = 16;
 const MAX_FONT_SIZE = 24;
-const MOBILE_PAGE_MIN_CHARS = 420;
-const MOBILE_PAGE_MAX_CHARS = 980;
 
 function splitChapterParagraphs(content: string): string[] {
   return content
@@ -28,65 +27,6 @@ function splitChapterParagraphs(content: string): string[] {
     .split(/\n+/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean);
-}
-
-function getMobilePageTargetChars(fontSize: number): number {
-  const normalizedSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, fontSize));
-  return Math.max(
-    MOBILE_PAGE_MIN_CHARS,
-    Math.min(MOBILE_PAGE_MAX_CHARS, Math.round(MOBILE_PAGE_MAX_CHARS - (normalizedSize - MIN_FONT_SIZE) * 70)),
-  );
-}
-
-function splitLongParagraph(paragraph: string, targetChars: number): string[] {
-  if (paragraph.length <= targetChars * 1.35) {
-    return [paragraph];
-  }
-
-  const chunks: string[] = [];
-  let remaining = paragraph;
-  const punctuationPattern = /[。！？!?；;，,、]/g;
-  while (remaining.length > targetChars * 1.35) {
-    const minCut = Math.floor(targetChars * 0.68);
-    const maxCut = Math.min(remaining.length, Math.floor(targetChars * 1.08));
-    const searchArea = remaining.slice(minCut, maxCut);
-    const punctuationMatches = [...searchArea.matchAll(punctuationPattern)];
-    const punctuationCut = punctuationMatches.length
-      ? minCut + punctuationMatches[punctuationMatches.length - 1].index! + 1
-      : -1;
-    const cutAt = punctuationCut > 0 ? punctuationCut : targetChars;
-    chunks.push(remaining.slice(0, cutAt).trim());
-    remaining = remaining.slice(cutAt).trim();
-  }
-  if (remaining) {
-    chunks.push(remaining);
-  }
-  return chunks;
-}
-
-function buildMobilePages(paragraphs: string[], fontSize: number): string[][] {
-  const targetChars = getMobilePageTargetChars(fontSize);
-  const pages: string[][] = [];
-  let currentPage: string[] = [];
-  let currentChars = 0;
-
-  const readableParagraphs = paragraphs.flatMap((paragraph) => splitLongParagraph(paragraph, targetChars));
-  readableParagraphs.forEach((paragraph) => {
-    const paragraphChars = paragraph.length;
-    const shouldStartNextPage = currentPage.length > 0 && currentChars + paragraphChars > targetChars;
-    if (shouldStartNextPage) {
-      pages.push(currentPage);
-      currentPage = [];
-      currentChars = 0;
-    }
-    currentPage.push(paragraph);
-    currentChars += paragraphChars;
-  });
-
-  if (currentPage.length) {
-    pages.push(currentPage);
-  }
-  return pages;
 }
 
 function formatCount(value: number): string {
@@ -121,11 +61,17 @@ function resolveChapterFromParam(
 export default function NovelReaderPage() {
   const { id = "" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
+  const mobilePagerViewportRef = useRef<HTMLDivElement | null>(null);
+  const mobilePagerContentRef = useRef<HTMLDivElement | null>(null);
+  const mobileTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(18);
   const [isNightMode, setIsNightMode] = useState(false);
   const [isMobilePagedMode, setIsMobilePagedMode] = useState(true);
   const [mobilePageIndex, setMobilePageIndex] = useState(0);
+  const [mobilePageCount, setMobilePageCount] = useState(1);
+  const [mobilePageWidth, setMobilePageWidth] = useState(0);
+  const [readerControlsVisible, setReaderControlsVisible] = useState(true);
 
   const readerQuery = useQuery({
     queryKey: queryKeys.novels.publicReader(id),
@@ -151,10 +97,7 @@ export default function NovelReaderPage() {
   const previousChapter = activeIndex > 0 ? chapters[activeIndex - 1] : undefined;
   const nextChapter = activeIndex >= 0 && activeIndex < chapters.length - 1 ? chapters[activeIndex + 1] : undefined;
   const paragraphs = useMemo(() => splitChapterParagraphs(activeChapter?.content ?? ""), [activeChapter?.content]);
-  const mobilePages = useMemo(() => buildMobilePages(paragraphs, fontSize), [fontSize, paragraphs]);
-  const mobilePageCount = mobilePages.length;
   const activeMobilePageIndex = Math.min(mobilePageIndex, Math.max(0, mobilePageCount - 1));
-  const activeMobilePage = mobilePages[activeMobilePageIndex] ?? [];
   const authorName = reader?.author.displayName?.trim() || reader?.author.username || "未知作者";
   const updatedAt = reader?.updatedAt ? formatReaderDate(reader.updatedAt) : "";
 
@@ -184,9 +127,45 @@ export default function NovelReaderPage() {
     setMobilePageIndex((current) => Math.min(current, Math.max(0, mobilePageCount - 1)));
   }, [mobilePageCount]);
 
-  const selectChapter = (chapter: PublicNovelReaderChapter) => {
+  const recalculateMobilePages = useCallback(() => {
+    if (!isMobilePagedMode) {
+      setMobilePageCount(1);
+      setMobilePageWidth(0);
+      return;
+    }
+
+    const viewport = mobilePagerViewportRef.current;
+    const content = mobilePagerContentRef.current;
+    if (!viewport || !content) {
+      return;
+    }
+
+    const nextPageWidth = Math.max(1, Math.floor(viewport.clientWidth));
+    setMobilePageWidth(nextPageWidth);
+    window.requestAnimationFrame(() => {
+      const totalWidth = content.scrollWidth;
+      const nextPageCount = Math.max(1, Math.ceil(totalWidth / nextPageWidth - 0.01));
+      setMobilePageCount(nextPageCount);
+      setMobilePageIndex((current) => Math.min(current, nextPageCount - 1));
+    });
+  }, [isMobilePagedMode]);
+
+  useLayoutEffect(() => {
+    recalculateMobilePages();
+  }, [activeChapter?.id, fontSize, paragraphs, readerControlsVisible, recalculateMobilePages]);
+
+  useEffect(() => {
+    window.addEventListener("resize", recalculateMobilePages);
+    window.addEventListener("orientationchange", recalculateMobilePages);
+    return () => {
+      window.removeEventListener("resize", recalculateMobilePages);
+      window.removeEventListener("orientationchange", recalculateMobilePages);
+    };
+  }, [recalculateMobilePages]);
+
+  const selectChapter = (chapter: PublicNovelReaderChapter, pagePlacement: "start" | "end" = "start") => {
     setActiveChapterId(chapter.id);
-    setMobilePageIndex(0);
+    setMobilePageIndex(pagePlacement === "end" ? Number.MAX_SAFE_INTEGER : 0);
     setSearchParams({ chapter: String(chapter.order) });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -210,7 +189,7 @@ export default function NovelReaderPage() {
       return;
     }
     if (previousChapter) {
-      selectChapter(previousChapter);
+      selectChapter(previousChapter, "end");
     }
   };
 
@@ -232,17 +211,46 @@ export default function NovelReaderPage() {
     ? activeMobilePageIndex < mobilePageCount - 1 || Boolean(nextChapter)
     : Boolean(nextChapter);
 
+  const handleMobilePagerTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    mobileTouchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleMobilePagerTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const start = mobileTouchStartRef.current;
+    const touch = event.changedTouches[0];
+    mobileTouchStartRef.current = null;
+    if (!start || !touch) {
+      return;
+    }
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) {
+      return;
+    }
+    if (deltaX < 0) {
+      goToNextMobileUnit();
+    } else {
+      goToPreviousMobileUnit();
+    }
+  };
+
   return (
     <div
       className={cn(
         "min-h-screen transition-colors",
+        isMobilePagedMode && "max-lg:h-dvh max-lg:overflow-hidden",
         isNightMode ? "bg-[#141a1f] text-slate-100" : "bg-[#f4f7f3] text-slate-950",
       )}
     >
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+      <div className={cn(
+        "mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8",
+        isMobilePagedMode && "max-lg:h-dvh max-lg:min-h-0 max-lg:py-3",
+      )}>
         <header
           className={cn(
             "sticky top-0 z-20 -mx-4 border-b px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8",
+            isMobilePagedMode && "max-lg:static max-lg:shrink-0",
             isNightMode ? "border-white/10 bg-[#141a1f]/90" : "border-slate-200/80 bg-[#f4f7f3]/90",
           )}
         >
@@ -303,7 +311,7 @@ export default function NovelReaderPage() {
           </div>
         </header>
 
-        <main className="flex-1 py-6">
+        <main className={cn("flex-1 py-6", isMobilePagedMode && "max-lg:flex max-lg:min-h-0 max-lg:flex-col max-lg:py-2")}>
           {readerQuery.isPending ? (
             <div className={cn("mx-auto max-w-3xl rounded-lg border p-6", isNightMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-white/75")}>
               正在加载小说正文...
@@ -316,7 +324,7 @@ export default function NovelReaderPage() {
               </div>
             </div>
           ) : reader ? (
-            <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <div className={cn("grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]", isMobilePagedMode && "max-lg:min-h-0 max-lg:flex-1")}>
               <aside className="hidden lg:block">
                 <div
                   className={cn(
@@ -353,8 +361,15 @@ export default function NovelReaderPage() {
                 </div>
               </aside>
 
-              <section className="min-w-0">
-                <div className={cn("mb-4 rounded-lg border p-4 lg:hidden", isNightMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-white/75")}>
+              <section className={cn("min-w-0", isMobilePagedMode && "max-lg:flex max-lg:min-h-0 max-lg:flex-col")}>
+                <div
+                  className={cn(
+                    "mb-4 rounded-lg border p-4 lg:hidden",
+                    isMobilePagedMode && "mb-2 shrink-0 p-3",
+                    isMobilePagedMode && !readerControlsVisible && "hidden",
+                    isNightMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-white/75",
+                  )}
+                >
                   <label className="text-sm font-medium" htmlFor="reader-chapter-select">章节</label>
                   <select
                     id="reader-chapter-select"
@@ -428,10 +443,18 @@ export default function NovelReaderPage() {
                 <article
                   className={cn(
                     "mx-auto max-w-3xl rounded-lg border px-5 py-7 shadow-sm sm:px-8 sm:py-9 lg:px-12 lg:py-11",
+                    isMobilePagedMode && "max-lg:flex max-lg:min-h-0 max-lg:flex-1 max-lg:flex-col max-lg:overflow-hidden max-lg:px-4 max-lg:py-4",
                     isNightMode ? "border-white/10 bg-[#1b2329] shadow-black/20" : "border-slate-200 bg-[#fffefb] shadow-slate-200/70",
                   )}
                 >
-                  <div className={cn("border-b pb-6", isNightMode ? "border-white/10" : "border-slate-200")}>
+                  <div
+                    className={cn(
+                      "border-b pb-6",
+                      isMobilePagedMode && "max-lg:shrink-0 max-lg:pb-3",
+                      isMobilePagedMode && !readerControlsVisible && "max-lg:hidden",
+                      isNightMode ? "border-white/10" : "border-slate-200",
+                    )}
+                  >
                     <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1 text-sm", isNightMode ? "text-slate-400" : "text-slate-500")}>
                       <span>作者：{authorName}</span>
                       <span>章节：{formatCount(reader.stats.chapterCount)}</span>
@@ -442,7 +465,13 @@ export default function NovelReaderPage() {
 
                   {activeChapter ? (
                     <>
-                      <div className="pt-8">
+                      <div
+                        className={cn(
+                          "pt-8",
+                          isMobilePagedMode && "max-lg:shrink-0 max-lg:pt-3",
+                          isMobilePagedMode && !readerControlsVisible && "max-lg:hidden",
+                        )}
+                      >
                         <div className={cn("text-sm", isNightMode ? "text-emerald-200/80" : "text-emerald-700")}>
                           第 {activeChapter.order} 章
                         </div>
@@ -461,22 +490,74 @@ export default function NovelReaderPage() {
                           </p>
                         ))}
                       </div>
-                      <div
-                        className={cn(
-                          "mt-8 space-y-5 font-serif leading-9 lg:hidden",
-                          isMobilePagedMode ? "min-h-[calc(100svh-23rem)]" : "",
-                          isNightMode ? "text-slate-100" : "text-slate-900",
-                        )}
-                        style={{ fontSize }}
-                      >
-                        {(isMobilePagedMode ? activeMobilePage : paragraphs).map((paragraph, index) => (
-                          <p key={`${activeChapter.id}-${isMobilePagedMode ? activeMobilePageIndex : "scroll"}-${index}`} className="break-words text-justify">
-                            {paragraph}
-                          </p>
-                        ))}
-                      </div>
                       {isMobilePagedMode ? (
-                        <div className={cn("mt-8 text-center text-sm lg:hidden", isNightMode ? "text-slate-400" : "text-slate-500")}>
+                        <div
+                          ref={mobilePagerViewportRef}
+                          className={cn(
+                            "relative mt-4 hidden min-h-0 flex-1 overflow-hidden font-serif leading-9 max-lg:block",
+                            isNightMode ? "text-slate-100" : "text-slate-900",
+                          )}
+                          onTouchStart={handleMobilePagerTouchStart}
+                          onTouchEnd={handleMobilePagerTouchEnd}
+                        >
+                          <div
+                            ref={mobilePagerContentRef}
+                            className="h-full transition-transform duration-200 ease-out"
+                            style={{
+                              columnGap: 0,
+                              columnWidth: mobilePageWidth > 0 ? `${mobilePageWidth}px` : undefined,
+                              fontSize,
+                              transform: `translateX(-${activeMobilePageIndex * mobilePageWidth}px)`,
+                            }}
+                          >
+                            {paragraphs.map((paragraph, index) => (
+                              <p key={`${activeChapter.id}-paged-${index}`} className="mb-5 break-words text-justify">
+                                {paragraph}
+                              </p>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            className="absolute inset-y-0 left-0 w-[30%] cursor-default bg-transparent"
+                            aria-label="上一页"
+                            onClick={goToPreviousMobileUnit}
+                          />
+                          <button
+                            type="button"
+                            className="absolute inset-y-0 left-[30%] w-[40%] cursor-default bg-transparent"
+                            aria-label={readerControlsVisible ? "隐藏阅读控制" : "显示阅读控制"}
+                            onClick={() => setReaderControlsVisible((current) => !current)}
+                          />
+                          <button
+                            type="button"
+                            className="absolute inset-y-0 right-0 w-[30%] cursor-default bg-transparent"
+                            aria-label="下一页"
+                            onClick={goToNextMobileUnit}
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className={cn(
+                            "mt-8 space-y-5 font-serif leading-9 lg:hidden",
+                            isNightMode ? "text-slate-100" : "text-slate-900",
+                          )}
+                          style={{ fontSize }}
+                        >
+                          {paragraphs.map((paragraph, index) => (
+                            <p key={`${activeChapter.id}-scroll-${index}`} className="break-words text-justify">
+                              {paragraph}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                      {isMobilePagedMode ? (
+                        <div
+                          className={cn(
+                            "mt-3 shrink-0 text-center text-sm lg:hidden",
+                            !readerControlsVisible && "hidden",
+                            isNightMode ? "text-slate-400" : "text-slate-500",
+                          )}
+                        >
                           {mobilePageCount > 0 ? `${activeMobilePageIndex + 1} / ${mobilePageCount}` : "0 / 0"}
                         </div>
                       ) : null}
@@ -511,7 +592,13 @@ export default function NovelReaderPage() {
                   </nav>
                 ) : null}
                 {activeChapter ? (
-                  <nav className="mx-auto mt-5 flex max-w-3xl items-center justify-between gap-3 lg:hidden">
+                  <nav
+                    className={cn(
+                      "mx-auto mt-5 flex max-w-3xl items-center justify-between gap-3 lg:hidden",
+                      isMobilePagedMode && "mt-2 shrink-0",
+                      isMobilePagedMode && !readerControlsVisible && "hidden",
+                    )}
+                  >
                     <Button
                       type="button"
                       variant={isNightMode ? "secondary" : "outline"}
