@@ -521,10 +521,7 @@ export default function NovelReaderPage() {
                                   breakInside: "avoid",
                                 }}
                               >
-                                <div className={cn("text-sm", isNightMode ? "text-emerald-200/80" : "text-emerald-700")}>
-                                  AI 小说公开阅读
-                                </div>
-                                <h2 className="mt-5 max-w-full break-words text-3xl font-semibold leading-tight">
+                                <h2 className="max-w-full break-words text-3xl font-semibold leading-tight">
                                   {reader.title}
                                 </h2>
                                 <div className={cn("mt-5 text-sm", isNightMode ? "text-slate-400" : "text-slate-500")}>
