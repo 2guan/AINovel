@@ -64,6 +64,7 @@ export default function NovelReaderPage() {
   const mobilePagerViewportRef = useRef<HTMLDivElement | null>(null);
   const mobilePagerContentRef = useRef<HTMLDivElement | null>(null);
   const mobileTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const pendingMobilePagePlacementRef = useRef<"start" | "end">("start");
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(18);
   const [isNightMode, setIsNightMode] = useState(false);
@@ -71,7 +72,7 @@ export default function NovelReaderPage() {
   const [mobilePageIndex, setMobilePageIndex] = useState(0);
   const [mobilePageCount, setMobilePageCount] = useState(1);
   const [mobilePageWidth, setMobilePageWidth] = useState(0);
-  const [readerControlsVisible, setReaderControlsVisible] = useState(true);
+  const [readerControlsVisible, setReaderControlsVisible] = useState(false);
 
   const readerQuery = useQuery({
     queryKey: queryKeys.novels.publicReader(id),
@@ -120,7 +121,8 @@ export default function NovelReaderPage() {
   }, [activeChapterId, chapters, searchParams]);
 
   useEffect(() => {
-    setMobilePageIndex(0);
+    setMobilePageIndex(pendingMobilePagePlacementRef.current === "end" ? Number.MAX_SAFE_INTEGER : 0);
+    pendingMobilePagePlacementRef.current = "start";
   }, [activeChapter?.id]);
 
   useEffect(() => {
@@ -152,7 +154,7 @@ export default function NovelReaderPage() {
 
   useLayoutEffect(() => {
     recalculateMobilePages();
-  }, [activeChapter?.id, fontSize, paragraphs, readerControlsVisible, recalculateMobilePages]);
+  }, [activeChapter?.id, fontSize, paragraphs, recalculateMobilePages]);
 
   useEffect(() => {
     window.addEventListener("resize", recalculateMobilePages);
@@ -164,6 +166,7 @@ export default function NovelReaderPage() {
   }, [recalculateMobilePages]);
 
   const selectChapter = (chapter: PublicNovelReaderChapter, pagePlacement: "start" | "end" = "start") => {
+    pendingMobilePagePlacementRef.current = pagePlacement;
     setActiveChapterId(chapter.id);
     setMobilePageIndex(pagePlacement === "end" ? Number.MAX_SAFE_INTEGER : 0);
     setSearchParams({ chapter: String(chapter.order) });
@@ -250,7 +253,7 @@ export default function NovelReaderPage() {
         <header
           className={cn(
             "sticky top-0 z-20 -mx-4 border-b px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8",
-            isMobilePagedMode && "max-lg:static max-lg:shrink-0",
+            isMobilePagedMode && "max-lg:hidden",
             isNightMode ? "border-white/10 bg-[#141a1f]/90" : "border-slate-200/80 bg-[#f4f7f3]/90",
           )}
         >
@@ -365,8 +368,7 @@ export default function NovelReaderPage() {
                 <div
                   className={cn(
                     "mb-4 rounded-lg border p-4 lg:hidden",
-                    isMobilePagedMode && "mb-2 shrink-0 p-3",
-                    isMobilePagedMode && !readerControlsVisible && "hidden",
+                    isMobilePagedMode && "hidden",
                     isNightMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-white/75",
                   )}
                 >
@@ -450,8 +452,7 @@ export default function NovelReaderPage() {
                   <div
                     className={cn(
                       "border-b pb-6",
-                      isMobilePagedMode && "max-lg:shrink-0 max-lg:pb-3",
-                      isMobilePagedMode && !readerControlsVisible && "max-lg:hidden",
+                      isMobilePagedMode && "max-lg:hidden",
                       isNightMode ? "border-white/10" : "border-slate-200",
                     )}
                   >
@@ -468,8 +469,7 @@ export default function NovelReaderPage() {
                       <div
                         className={cn(
                           "pt-8",
-                          isMobilePagedMode && "max-lg:shrink-0 max-lg:pt-3",
-                          isMobilePagedMode && !readerControlsVisible && "max-lg:hidden",
+                          isMobilePagedMode && "max-lg:hidden",
                         )}
                       >
                         <div className={cn("text-sm", isNightMode ? "text-emerald-200/80" : "text-emerald-700")}>
@@ -553,8 +553,9 @@ export default function NovelReaderPage() {
                       {isMobilePagedMode ? (
                         <div
                           className={cn(
-                            "mt-3 shrink-0 text-center text-sm lg:hidden",
-                            !readerControlsVisible && "hidden",
+                            "pointer-events-none fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 rounded-full px-3 py-1 text-center text-xs shadow-lg backdrop-blur lg:hidden",
+                            readerControlsVisible && "bottom-[calc(5rem+env(safe-area-inset-bottom))]",
+                            isNightMode ? "bg-black/35 text-slate-300" : "bg-white/80 text-slate-600",
                             isNightMode ? "text-slate-400" : "text-slate-500",
                           )}
                         >
@@ -595,8 +596,7 @@ export default function NovelReaderPage() {
                   <nav
                     className={cn(
                       "mx-auto mt-5 flex max-w-3xl items-center justify-between gap-3 lg:hidden",
-                      isMobilePagedMode && "mt-2 shrink-0",
-                      isMobilePagedMode && !readerControlsVisible && "hidden",
+                      isMobilePagedMode && "hidden",
                     )}
                   >
                     <Button
@@ -624,6 +624,149 @@ export default function NovelReaderPage() {
           ) : null}
         </main>
       </div>
+      {isMobilePagedMode && activeChapter && readerControlsVisible ? (
+        <div className="lg:hidden">
+          <div
+            className={cn(
+              "fixed inset-x-0 top-0 z-40 border-b px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] shadow-lg backdrop-blur",
+              isNightMode ? "border-white/10 bg-[#141a1f]/92 text-slate-100" : "border-slate-200/80 bg-[#f4f7f3]/92 text-slate-950",
+            )}
+          >
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <BookOpenCheck className="h-4 w-4" aria-hidden="true" />
+              公开阅读
+            </div>
+            <div className="mt-1 min-w-0 truncate text-base font-semibold">
+              {reader?.title ?? "小说阅读"}
+            </div>
+            <div className={cn("mt-1 truncate text-xs", isNightMode ? "text-slate-400" : "text-slate-500")}>
+              第 {activeChapter.order} 章 · {activeChapter.title}
+            </div>
+          </div>
+
+          <div
+            className={cn(
+              "fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 rounded-2xl border p-3 shadow-2xl backdrop-blur",
+              isNightMode ? "border-white/10 bg-[#1b2329]/94 text-slate-100" : "border-slate-200 bg-white/94 text-slate-950",
+            )}
+          >
+            <div className="grid gap-3">
+              <div>
+                <label className="text-xs font-medium" htmlFor="floating-reader-chapter-select">章节</label>
+                <select
+                  id="floating-reader-chapter-select"
+                  className={cn(
+                    "mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none",
+                    isNightMode ? "border-white/10 bg-[#141a1f] text-slate-100" : "border-slate-200 bg-white text-slate-950",
+                  )}
+                  value={activeChapter.id}
+                  onChange={(event) => {
+                    const selected = chapters.find((chapter) => chapter.id === event.target.value);
+                    if (selected) {
+                      selectChapter(selected);
+                    }
+                  }}
+                >
+                  {chapters.map((chapter) => (
+                    <option key={chapter.id} value={chapter.id}>
+                      第 {chapter.order} 章 {chapter.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-sm transition",
+                    isMobilePagedMode
+                      ? isNightMode
+                        ? "border-emerald-300/30 bg-emerald-400/15 text-emerald-100"
+                        : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : isNightMode
+                        ? "border-white/10 text-slate-300"
+                        : "border-slate-200 text-slate-600",
+                  )}
+                  onClick={() => {
+                    setIsMobilePagedMode(true);
+                    setMobilePageIndex(0);
+                    scrollReaderToTop();
+                  }}
+                >
+                  分页
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-sm transition",
+                    !isMobilePagedMode
+                      ? isNightMode
+                        ? "border-emerald-300/30 bg-emerald-400/15 text-emerald-100"
+                        : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : isNightMode
+                        ? "border-white/10 text-slate-300"
+                        : "border-slate-200 text-slate-600",
+                  )}
+                  onClick={() => {
+                    setIsMobilePagedMode(false);
+                    setMobilePageIndex(0);
+                    setReaderControlsVisible(false);
+                    scrollReaderToTop();
+                  }}
+                >
+                  滚动
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  type="button"
+                  variant={isNightMode ? "secondary" : "outline"}
+                  size="icon"
+                  onClick={reduceFontSize}
+                  disabled={fontSize <= MIN_FONT_SIZE}
+                  aria-label="缩小字号"
+                  title="缩小字号"
+                >
+                  <Minus className="h-4 w-4" aria-hidden="true" />
+                </Button>
+                <div
+                  className={cn(
+                    "flex h-9 flex-1 items-center justify-center gap-1 rounded-md border px-3 text-sm",
+                    isNightMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-white/70",
+                  )}
+                  title="当前字号"
+                >
+                  <Type className="h-4 w-4" aria-hidden="true" />
+                  {fontSize}
+                </div>
+                <Button
+                  type="button"
+                  variant={isNightMode ? "secondary" : "outline"}
+                  size="icon"
+                  onClick={increaseFontSize}
+                  disabled={fontSize >= MAX_FONT_SIZE}
+                  aria-label="放大字号"
+                  title="放大字号"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                </Button>
+                <Button
+                  type="button"
+                  variant={isNightMode ? "secondary" : "outline"}
+                  size="icon"
+                  onClick={() => setIsNightMode((current) => !current)}
+                  aria-label={isNightMode ? "切换日间阅读" : "切换夜间阅读"}
+                  title={isNightMode ? "切换日间阅读" : "切换夜间阅读"}
+                >
+                  {isNightMode ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
