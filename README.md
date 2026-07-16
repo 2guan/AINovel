@@ -102,6 +102,31 @@
 - 前后端已经完成 Monorepo 拆分，适合本地持续开发，也比较适合继续往 Prompt Registry、Workflow Registry 和 Runtime 这条路上扩。
 - 默认使用 SQLite 就能把主链先跑起来；如果你要完整体验知识库 / RAG，再按需接 Qdrant 就行，不需要一上来就把所有基础设施堆满。
 
+## Docker 部署
+
+服务器部署可以直接使用根目录的 `docker-compose.yml`：
+
+```bash
+cp .env.example .env
+docker compose up -d
+```
+
+Compose 会优先使用 GitHub Container Registry 上发布的镜像，默认镜像为 `ghcr.io/2guan/ainovel-api:latest` 和 `ghcr.io/2guan/ainovel-web:latest`。如果服务器拿不到发布镜像，Compose 会按仓库内的 `Dockerfile.api` 和 `Dockerfile.web` 本地构建兜底。
+
+常用部署配置放在根目录 `.env`：
+
+```env
+DOCKER_DATA_DIR=./AINovelData
+DOCKER_REGISTRY=ghcr.io
+DOCKER_IMAGE_NAMESPACE=2guan
+DOCKER_IMAGE_TAG=latest
+DOCKER_API_PORT=4001
+DOCKER_WEB_PORT=4002
+DOCKER_CORS_ORIGIN=https://ainovel.guantools.top
+```
+
+Web 容器会把同源 `/api` 转发给内部 API 容器，所以反向代理通常只需要把业务域名转到 Web 端口。发布镜像更新后，服务器可执行 `docker compose pull && docker compose up -d` 拉取最新镜像并重启。
+
 
 ## 典型使用路径
 
@@ -126,18 +151,15 @@
 
 完整历史更新见 [docs/releases/release-notes.md](./docs/releases/release-notes.md)。
 
-### 2026-06-29
+### 2026-07-16
 
-公开阅读页的手机分页更接近常见电子书阅读器：分页模式下页面不再纵向滚动，而是固定在当前屏幕内横向翻页；用户可以点按屏幕左侧回到上一页，点按右侧进入下一页，点按中间显示或隐藏章节选择和翻页控制。
+Docker 部署支持直接使用 GitHub 发布镜像：服务器执行 `docker compose up -d` 时会优先使用发布镜像，拿不到镜像时再按本地 Dockerfile 构建，减少服务器重复构建前后端的等待时间。
 
-- 手机端公开阅读分页改为按屏幕尺寸自然排版的整屏翻页，字号变化、章节切换和横竖屏变化后会重新计算页数。
-- 分页正文会把书名页和章节信息页纳入阅读内容流：全书开头的书名页单独占一页，每章正文前的章节信息也单独占一页。
-- 分页阅读支持点击左侧 / 右侧翻页，也支持左右滑动翻页；在章节开头或结尾会自动衔接上一章或下一章。
-- 修正连续翻到后续页面时的边界错位，正文不会在页面左侧被裁切或露到右侧缝隙。
-- 点按正文中间区域可以收起或显示浮层控制，章节选择、分页 / 滚动切换、字号和主题都在浮层中操作，不会挤压正文或触发重新分页。
-- 分页设置浮层和滚动阅读页右上角新增“我也要写”入口，读者可以直接回到工具首页开始创作。
-- 滚动阅读模式仍然保留，用户可以在手机端章节选择区域切换“分页 / 滚动”。
-- 手机端更多菜单为管理员显示成员管理入口；成员管理页在手机上以成员卡片展示，方便审核成员、调整角色状态、重置密码和删除账号。
+- 新增 GitHub 镜像发布流程，推送到指定分支或标签后会构建并发布 API 与 Web 两个镜像。
+- Docker Compose 默认镜像源为 `ghcr.io/2guan/ainovel-api` 和 `ghcr.io/2guan/ainovel-web`，可通过 `.env` 调整镜像仓库、命名空间和 tag。
+- Web 镜像默认使用同源 `/api`，并由 Web 容器转发到内部 API 服务；服务器反向代理通常只需要把业务域名转到 Web 端口。
+- `.env.example` 补齐镜像发布相关配置，保留 API `4001`、Web `4002` 和 `./AINovelData/` 数据挂载默认值。
+- 发布镜像更新后，服务器可以执行 `docker compose pull && docker compose up -d` 拉取最新镜像并重启；没有发布镜像时仍可直接本地构建兜底。
 
 ## 功能预览
 ### 功能概览中的95%以上编写都是AI完成

@@ -1,8 +1,11 @@
 services:
   api:
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-2guan}/ainovel-api:${DOCKER_IMAGE_TAG:-latest}
+    pull_policy: missing
     build:
       context: .
       dockerfile: Dockerfile.api
+    restart: unless-stopped
     environment:
       NODE_ENV: production
       AI_NOVEL_DATABASE_MODE: sqlite
@@ -17,11 +20,14 @@ services:
       - ${DOCKER_DATA_DIR:-./AINovelData}/storage:/app/storage
 
   web:
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_IMAGE_NAMESPACE:-2guan}/ainovel-web:${DOCKER_IMAGE_TAG:-latest}
+    pull_policy: missing
     build:
       context: .
       dockerfile: Dockerfile.web
       args:
-        VITE_API_BASE_URL: ${DOCKER_VITE_API_BASE_URL:-http://localhost:4001/api}
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
     depends_on:
       - api
     ports:

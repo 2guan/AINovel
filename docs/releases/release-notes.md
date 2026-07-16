@@ -4,6 +4,16 @@
 
 ## 更新历史
 
+### 2026-07-16（GitHub 镜像发布与 Docker 部署）
+
+Docker 部署支持直接使用 GitHub 发布镜像：服务器执行 `docker compose up -d` 时会优先使用发布镜像，拿不到镜像时再按本地 Dockerfile 构建，减少服务器重复构建前后端的等待时间。
+
+- 新增 GitHub 镜像发布流程，推送到指定分支或标签后会构建并发布 API 与 Web 两个镜像。
+- Docker Compose 默认镜像源为 `ghcr.io/2guan/ainovel-api` 和 `ghcr.io/2guan/ainovel-web`，可通过 `.env` 调整镜像仓库、命名空间和 tag。
+- Web 镜像默认使用同源 `/api`，并由 Web 容器转发到内部 API 服务；服务器反向代理通常只需要把业务域名转到 Web 端口。
+- `.env.example` 补齐镜像发布相关配置，保留 API `4001`、Web `4002` 和 `./AINovelData/` 数据挂载默认值。
+- 发布镜像更新后，服务器可以执行 `docker compose pull && docker compose up -d` 拉取最新镜像并重启；没有发布镜像时仍可直接本地构建兜底。
+
 ### 2026-06-29（公开阅读器分页体验）
 
 公开阅读页的手机分页更接近常见电子书阅读器：分页模式下页面不再纵向滚动，而是固定在当前屏幕内横向翻页；用户可以点按屏幕左侧回到上一页，点按右侧进入下一页，点按中间显示或隐藏章节选择和翻页控制。
